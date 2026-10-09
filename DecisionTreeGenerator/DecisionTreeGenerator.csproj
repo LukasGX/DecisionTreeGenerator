@@ -13,4 +13,11 @@
     <PackageReference Include="System.CommandLine" Version="2.0.12" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="DecisionTreeGenerator.Tests/**/*.cs" />
+    <Content Remove="DecisionTreeGenerator.Tests/**" />
+    <EmbeddedResource Remove="DecisionTreeGenerator.Tests/**" />
+    <None Remove="DecisionTreeGenerator.Tests/**" />
+</ItemGroup>
+
 </Project>
