@@ -8,93 +8,148 @@ public static class Program
 {
     public static void Main(string[] args)
     {
-        string? trainingDataArg = null;
+        DataPool dataPool = new();
+        ElementSchema elSchema = new([]);
+
+        string schemaArg = "autodetect";
+        string trainingDataArg = "manual";
+        string testDataArg = "manual";
+
+        HashSet<string> usedOptions = [];
 
         for (int i = 0; i < args.Length; i++)
         {
-            if (args[i] is "--trainingdata" or "-e")
+            string? target = args[i] switch
             {
-                if (trainingDataArg is not null)
-                    throw new ArgumentException(
-                        "The training data parameter was specified more than once.");
+                "-s" or "--schema" => "schema",
+                "-e" or "--trainingdata" => "trainingdata",
+                "-t" or "--testdata" => "testdata",
+                _ => null
+            };
 
-                if (i + 1 >= args.Length)
-                    throw new ArgumentException(
-                        "Expected a value: csv:filename or json:filename.");
+            if (target is null)
+                throw new ArgumentException($"Unknown argument: {args[i]}");
 
-                trainingDataArg = args[++i];
-            }
-        }
-
-        if (trainingDataArg is not null)
-        {
-            string[] parts = trainingDataArg.Split(':', 2);
-
-            if (parts.Length != 2 || string.IsNullOrWhiteSpace(parts[1]))
+            if (!usedOptions.Add(target))
                 throw new ArgumentException(
-                    "Expected format: csv:filename or json:filename.");
+                    $"The parameter '{args[i]}' was specified more than once.");
 
-            string format = parts[0].ToLowerInvariant();
-            string filename = parts[1];
+            if (i + 1 >= args.Length || args[i + 1].StartsWith('-'))
+                throw new ArgumentException(
+                    $"Missing value for parameter '{args[i]}'.");
 
-            switch (format)
+            string value = args[++i];
+
+            switch (target)
             {
-                case "csv":
-                    Console.WriteLine($"Load CSV: {filename}");
+                case "schema":
+                    schemaArg = value;
                     break;
 
-                case "json":
-                    Console.WriteLine($"Load JSON: {filename}");
+                case "trainingdata":
+                    trainingDataArg = value;
                     break;
 
-                default:
-                    throw new ArgumentException(
-                        $"Unsupported training data format: {format}");
+                case "testdata":
+                    testDataArg = value;
+                    break;
             }
         }
 
-        DataPool dataPool = new();
+        // schema
+        if (schemaArg.Equals("autodetect", StringComparison.OrdinalIgnoreCase))
+        {
+            // TODO: autodetect
+            throw new NotImplementedException();
+        }
+        else
+        {
+            LoadFileArgument(schemaArg, "schema", (format, filename) =>
+            {
+                switch (format)
+                {
+                    case "csv":
+                        elSchema = ElementSchema.LoadCSV(filename);
+                        break;
 
-        ElementSchema elSchema = new([new("Color", [new("Red"), new("Green")]), new("Shape", [new("Circle"), new("Square"), new("Rectangle")])]);
+                    case "json":
+                        elSchema = ElementSchema.LoadJSON(filename);
+                        break;
+                }
+            });
+        }
 
-        // insert training data
-        dataPool.TrainingData.Add(new("A", [new("Color", new("Red")),   new("Shape", new("Circle"))]));
-        dataPool.TrainingData.Add(new("A", [new("Color", new("Green")), new("Shape", new("Circle"))]));
-        dataPool.TrainingData.Add(new("A", [new("Color", new("Red")),   new("Shape", new("Circle"))]));
-        dataPool.TrainingData.Add(new("A", [new("Color", new("Green")), new("Shape", new("Circle"))]));
-        dataPool.TrainingData.Add(new("A", [new("Color", new("Red")),   new("Shape", new("Circle"))]));
+        // trainingdata
+        if (trainingDataArg.Equals("manual", StringComparison.OrdinalIgnoreCase))
+        {
+            // TODO: manual
+            throw new NotImplementedException();
+        }
+        else
+        {
+            LoadFileArgument(trainingDataArg, "training data", (format, filename) =>
+            {
+                switch (format)
+                {
+                    case "csv":
+                        dataPool.LoadCSV(filename, elSchema);
+                        break;
 
-        dataPool.TrainingData.Add(new("A", [new("Color", new("Red")),   new("Shape", new("Square"))]));
-        dataPool.TrainingData.Add(new("A", [new("Color", new("Green")), new("Shape", new("Square"))]));
-        dataPool.TrainingData.Add(new("A", [new("Color", new("Red")),   new("Shape", new("Square"))]));
-        dataPool.TrainingData.Add(new("A", [new("Color", new("Green")), new("Shape", new("Square"))]));
-        dataPool.TrainingData.Add(new("A", [new("Color", new("Green")), new("Shape", new("Square"))]));
+                    case "json":
+                        dataPool.LoadJSON(filename, elSchema);
+                        break;
+                }
+            });
+        }
 
-        dataPool.TrainingData.Add(new("B", [new("Color", new("Red")),   new("Shape", new("Rectangle"))]));
-        dataPool.TrainingData.Add(new("B", [new("Color", new("Green")), new("Shape", new("Rectangle"))]));
-        dataPool.TrainingData.Add(new("B", [new("Color", new("Red")),   new("Shape", new("Rectangle"))]));
-        dataPool.TrainingData.Add(new("B", [new("Color", new("Green")), new("Shape", new("Rectangle"))]));
-        dataPool.TrainingData.Add(new("B", [new("Color", new("Red")),   new("Shape", new("Rectangle"))]));
+        // testdata
+        if (testDataArg.Equals("manual", StringComparison.OrdinalIgnoreCase))
+        {
+            // TODO: manual
+        }
+        else
+        {
+            LoadFileArgument(testDataArg, "test data", (format, filename) =>
+            {
+                switch (format)
+                {
+                    case "csv":
+                        dataPool.LoadCSV(filename, elSchema, true);
+                        break;
 
-        // insert test data
-        dataPool.TestData.Add(new("A", [
-            new("Color", new("Green")),
-            new("Shape", new("Circle"))
-        ]));
-
-        dataPool.TestData.Add(new("A", [
-            new("Color", new("Red")),
-            new("Shape", new("Square"))
-        ]));
-
-        dataPool.TestData.Add(new("B", [
-            new("Color", new("Green")),
-            new("Shape", new("Rectangle"))
-        ]));
+                    case "json":
+                        dataPool.LoadJSON(filename, elSchema, true);
+                        break;
+                }
+            });
+        }
 
         // generate tree
         Tree tree = TreeGenerator.GenerateTree(elSchema, dataPool);
         tree.Test(dataPool);
         tree.Print();
+    }
+
+    static void LoadFileArgument(
+        string value,
+        string parameterName,
+        Action<string, string> load
+    )
+    {
+        string[] parts = value.Split(':', 2);
+
+        if (parts.Length != 2 || string.IsNullOrWhiteSpace(parts[1]))
+            throw new ArgumentException(
+                $"Invalid value for {parameterName}. " +
+                "Expected csv:filename or json:filename.");
+
+        string format = parts[0].ToLowerInvariant();
+        string filename = parts[1];
+
+        if (format is not ("csv" or "json"))
+            throw new ArgumentException(
+                $"Unsupported format '{format}' for {parameterName}.");
+
+        load(format, filename);
     }
 }
