@@ -1,5 +1,6 @@
 using CsvHelper;
 using CsvHelper.Configuration;
+using CsvHelper.Configuration.Attributes;
 using System.Globalization;
 using System.Text.Json;
 
@@ -224,5 +225,47 @@ public class DataPool
             TestData.AddRange(elements);
         else
             TrainingData.AddRange(elements);
+    }
+
+    public void Manual(ElementSchema elementSchema, DataPool dataPool, bool testData = false)
+    {
+        Console.WriteLine("Enter \"EXIT\" in any input to exit the process");
+        while (true)
+        {
+            Console.Write("Enter Label: ");
+            string? label = Console.ReadLine() ?? throw new Exception("Error");
+
+            if (label == "EXIT") break;
+
+            Element el = new(label, []);
+
+            foreach (DataAttribute attribute in elementSchema.Attributes)
+            {
+                while (true)
+                {
+                    Console.Write($"Enter {attribute.Name}: ");
+                    string? input = Console.ReadLine();
+
+                    if (input is null)
+                        Console.WriteLine("Unsupported value");
+                    else if (input == "EXIT")
+                        return;
+                    else if (!attribute.Outcomes.Any(o => o.Name == input))
+                        Console.WriteLine("Unsupported value");
+                    else
+                    {
+                        el.Attributes.Add(new(attribute.Name, new(input)));
+                        break;
+                    }
+                }
+            }
+
+            if (testData)
+                dataPool.TestData.Add(el);
+            else
+                dataPool.TrainingData.Add(el);
+
+            Console.WriteLine("---");
+        }
     }
 }

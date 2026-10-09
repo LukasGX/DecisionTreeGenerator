@@ -70,8 +70,7 @@ public static class Program
             // trainingdata
             if (trainingArg.Equals("manual", StringComparison.OrdinalIgnoreCase))
             {
-                // TODO: manual
-                throw new NotImplementedException();
+                dataPool.Manual(elSchema, dataPool, false);
             }
             else
             {
@@ -93,7 +92,7 @@ public static class Program
             // testdata
             if (testArg.Equals("manual", StringComparison.OrdinalIgnoreCase))
             {
-                // TODO: manual
+                dataPool.Manual(elSchema, dataPool, false);
             }
             else
             {
