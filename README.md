@@ -1,5 +1,7 @@
 # DecisionTreeGenerator
 
+[![.NET](https://github.com/LukasGX/DecisionTreeGenerator/actions/workflows/dotnet.yml/badge.svg)](https://github.com/LukasGX/DecisionTreeGenerator/actions/workflows/dotnet.yml)
+
 A decision tree generator written in C#.
 
 ## Features
