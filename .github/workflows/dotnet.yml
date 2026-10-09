@@ -25,10 +25,13 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Restore dependencies
+        working-directory: DecisionTreeGenerator
         run: dotnet restore
 
       - name: Build
+        working-directory: DecisionTreeGenerator
         run: dotnet build --configuration Release --no-restore
 
       - name: Test
+        working-directory: DecisionTreeGenerator
         run: dotnet test --configuration Release --no-build --verbosity normal
