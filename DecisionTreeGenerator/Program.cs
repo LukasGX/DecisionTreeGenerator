@@ -1,133 +1,124 @@
 ﻿using System.Linq.Expressions;
+using System.CommandLine;
+
 using DecisionTreeGenerator.Data;
 using DecisionTreeGenerator.Nodes;
 using DecisionTreeGenerator.TreeNS;
+
 namespace DecisionTreeGenerator;
 
 public static class Program
 {
-    public static void Main(string[] args)
+    public static int Main(string[] args)
     {
         DataPool dataPool = new();
         ElementSchema elSchema = new([]);
 
-        string schemaArg = "autodetect";
-        string trainingDataArg = "manual";
-        string testDataArg = "manual";
-
-        HashSet<string> usedOptions = [];
-
-        for (int i = 0; i < args.Length; i++)
+        Option<string> schemaOption = new("-s", "--schema")
         {
-            string? target = args[i] switch
+            Description = "Schema: csv:filename, json:filename or autodetect",
+            DefaultValueFactory = _ => "autodetect"
+        };
+
+        Option<string> trainingOption = new("-e", "--trainingdata")
+        {
+            Description = "Trainingdata: csv:filename, json:filename or manual",
+            DefaultValueFactory = _ => "manual"
+        };
+
+        Option<string> testOption = new("-t", "--testdata")
+        {
+            Description = "Testdata: csv:filename, json:filename or manual",
+            DefaultValueFactory = _ => "manual"
+        };
+
+        RootCommand rootCommand = new("DecisionTreeGenerator");
+
+        rootCommand.Options.Add(schemaOption);
+        rootCommand.Options.Add(trainingOption);
+        rootCommand.Options.Add(testOption);
+
+        rootCommand.SetAction(parseResult =>
+        {
+            string schemaArg = parseResult.GetValue(schemaOption) ?? "autodetect";
+            string trainingArg = parseResult.GetValue(trainingOption) ?? "manual";
+            string testArg = parseResult.GetValue(testOption) ?? "manual";
+            
+            // schema
+            if (schemaArg.Equals("autodetect", StringComparison.OrdinalIgnoreCase))
             {
-                "-s" or "--schema" => "schema",
-                "-e" or "--trainingdata" => "trainingdata",
-                "-t" or "--testdata" => "testdata",
-                _ => null
-            };
-
-            if (target is null)
-                throw new ArgumentException($"Unknown argument: {args[i]}");
-
-            if (!usedOptions.Add(target))
-                throw new ArgumentException(
-                    $"The parameter '{args[i]}' was specified more than once.");
-
-            if (i + 1 >= args.Length || args[i + 1].StartsWith('-'))
-                throw new ArgumentException(
-                    $"Missing value for parameter '{args[i]}'.");
-
-            string value = args[++i];
-
-            switch (target)
-            {
-                case "schema":
-                    schemaArg = value;
-                    break;
-
-                case "trainingdata":
-                    trainingDataArg = value;
-                    break;
-
-                case "testdata":
-                    testDataArg = value;
-                    break;
+                // TODO: autodetect
+                throw new NotImplementedException();
             }
-        }
-
-        // schema
-        if (schemaArg.Equals("autodetect", StringComparison.OrdinalIgnoreCase))
-        {
-            // TODO: autodetect
-            throw new NotImplementedException();
-        }
-        else
-        {
-            LoadFileArgument(schemaArg, "schema", (format, filename) =>
+            else
             {
-                switch (format)
+                LoadFileArgument(schemaArg, "schema", (format, filename) =>
                 {
-                    case "csv":
-                        elSchema = ElementSchema.LoadCSV(filename);
-                        break;
+                    switch (format)
+                    {
+                        case "csv":
+                            elSchema = ElementSchema.LoadCSV(filename);
+                            break;
 
-                    case "json":
-                        elSchema = ElementSchema.LoadJSON(filename);
-                        break;
-                }
-            });
-        }
+                        case "json":
+                            elSchema = ElementSchema.LoadJSON(filename);
+                            break;
+                    }
+                });
+            }
 
-        // trainingdata
-        if (trainingDataArg.Equals("manual", StringComparison.OrdinalIgnoreCase))
-        {
-            // TODO: manual
-            throw new NotImplementedException();
-        }
-        else
-        {
-            LoadFileArgument(trainingDataArg, "training data", (format, filename) =>
+            // trainingdata
+            if (trainingArg.Equals("manual", StringComparison.OrdinalIgnoreCase))
             {
-                switch (format)
-                {
-                    case "csv":
-                        dataPool.LoadCSV(filename, elSchema);
-                        break;
-
-                    case "json":
-                        dataPool.LoadJSON(filename, elSchema);
-                        break;
-                }
-            });
-        }
-
-        // testdata
-        if (testDataArg.Equals("manual", StringComparison.OrdinalIgnoreCase))
-        {
-            // TODO: manual
-        }
-        else
-        {
-            LoadFileArgument(testDataArg, "test data", (format, filename) =>
+                // TODO: manual
+                throw new NotImplementedException();
+            }
+            else
             {
-                switch (format)
+                LoadFileArgument(trainingArg, "training data", (format, filename) =>
                 {
-                    case "csv":
-                        dataPool.LoadCSV(filename, elSchema, true);
-                        break;
+                    switch (format)
+                    {
+                        case "csv":
+                            dataPool.LoadCSV(filename, elSchema);
+                            break;
 
-                    case "json":
-                        dataPool.LoadJSON(filename, elSchema, true);
-                        break;
-                }
-            });
-        }
+                        case "json":
+                            dataPool.LoadJSON(filename, elSchema);
+                            break;
+                    }
+                });
+            }
 
-        // generate tree
-        Tree tree = TreeGenerator.GenerateTree(elSchema, dataPool);
-        tree.Test(dataPool);
-        tree.Print();
+            // testdata
+            if (testArg.Equals("manual", StringComparison.OrdinalIgnoreCase))
+            {
+                // TODO: manual
+            }
+            else
+            {
+                LoadFileArgument(testArg, "test data", (format, filename) =>
+                {
+                    switch (format)
+                    {
+                        case "csv":
+                            dataPool.LoadCSV(filename, elSchema, true);
+                            break;
+
+                        case "json":
+                            dataPool.LoadJSON(filename, elSchema, true);
+                            break;
+                    }
+                });
+            }
+
+            // generate tree
+            Tree tree = TreeGenerator.GenerateTree(elSchema, dataPool);
+            tree.Test(dataPool);
+            tree.Print();
+        });
+
+        return rootCommand.Parse(args).Invoke();
     }
 
     static void LoadFileArgument(
