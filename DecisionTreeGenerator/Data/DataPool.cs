@@ -233,7 +233,7 @@ public class DataPool
         while (true)
         {
             Console.Write("Enter Label: ");
-            string? label = Console.ReadLine() ?? throw new Exception("Error");
+            string? label = Console.ReadLine() ?? throw new Exception("Label cannot be empty.");
 
             if (label == "EXIT") break;
 

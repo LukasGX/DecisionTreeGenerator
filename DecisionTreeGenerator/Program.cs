@@ -43,78 +43,92 @@ public static class Program
             string schemaArg = parseResult.GetValue(schemaOption) ?? "autodetect";
             string trainingArg = parseResult.GetValue(trainingOption) ?? "manual";
             string testArg = parseResult.GetValue(testOption) ?? "manual";
-            
-            // schema
-            if (schemaArg.Equals("autodetect", StringComparison.OrdinalIgnoreCase))
-            {
-                // TODO: autodetect
-                throw new NotImplementedException();
-            }
-            else
-            {
-                LoadFileArgument(schemaArg, "schema", (format, filename) =>
+
+            try {
+                // schema
+                if (schemaArg.Equals("autodetect", StringComparison.OrdinalIgnoreCase))
                 {
-                    switch (format)
-                    {
-                        case "csv":
-                            elSchema = ElementSchema.LoadCSV(filename);
-                            break;
-
-                        case "json":
-                            elSchema = ElementSchema.LoadJSON(filename);
-                            break;
-                    }
-                });
-            }
-
-            // trainingdata
-            if (trainingArg.Equals("manual", StringComparison.OrdinalIgnoreCase))
-            {
-                dataPool.Manual(elSchema, dataPool, false);
-            }
-            else
-            {
-                LoadFileArgument(trainingArg, "training data", (format, filename) =>
+                    // TODO: autodetect
+                    throw new NotImplementedException();
+                }
+                else
                 {
-                    switch (format)
+                    LoadFileArgument(schemaArg, "schema", (format, filename) =>
                     {
-                        case "csv":
-                            dataPool.LoadCSV(filename, elSchema);
-                            break;
+                        switch (format)
+                        {
+                            case "csv":
+                                elSchema = ElementSchema.LoadCSV(filename);
+                                break;
 
-                        case "json":
-                            dataPool.LoadJSON(filename, elSchema);
-                            break;
-                    }
-                });
-            }
+                            case "json":
+                                elSchema = ElementSchema.LoadJSON(filename);
+                                break;
+                        }
+                    });
+                }
 
-            // testdata
-            if (testArg.Equals("manual", StringComparison.OrdinalIgnoreCase))
-            {
-                dataPool.Manual(elSchema, dataPool, false);
-            }
-            else
-            {
-                LoadFileArgument(testArg, "test data", (format, filename) =>
+                // trainingdata
+                if (trainingArg.Equals("manual", StringComparison.OrdinalIgnoreCase))
                 {
-                    switch (format)
+                    dataPool.Manual(elSchema, dataPool, false);
+                }
+                else
+                {
+                    LoadFileArgument(trainingArg, "training data", (format, filename) =>
                     {
-                        case "csv":
-                            dataPool.LoadCSV(filename, elSchema, true);
-                            break;
+                        switch (format)
+                        {
+                            case "csv":
+                                dataPool.LoadCSV(filename, elSchema);
+                                break;
 
-                        case "json":
-                            dataPool.LoadJSON(filename, elSchema, true);
-                            break;
-                    }
-                });
+                            case "json":
+                                dataPool.LoadJSON(filename, elSchema);
+                                break;
+                        }
+                    });
+                }
+
+                // testdata
+                if (testArg.Equals("manual", StringComparison.OrdinalIgnoreCase))
+                {
+                    dataPool.Manual(elSchema, dataPool, false);
+                }
+                else
+                {
+                    LoadFileArgument(testArg, "test data", (format, filename) =>
+                    {
+                        switch (format)
+                        {
+                            case "csv":
+                                dataPool.LoadCSV(filename, elSchema, true);
+                                break;
+
+                            case "json":
+                                dataPool.LoadJSON(filename, elSchema, true);
+                                break;
+                        }
+                    });
+                }
+
+                // generate tree
+                Tree tree = TreeGenerator.GenerateTree(elSchema, dataPool);
+                tree.Test(dataPool);
+                tree.Print();
             }
-
-            // generate tree
-            Tree tree = TreeGenerator.GenerateTree(elSchema, dataPool);
-            tree.Test(dataPool);
-            tree.Print();
+            catch (FileNotFoundException e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"File not found: {e.FileName}");
+                Console.ResetColor();
+            }
+            catch (Exception e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"Error: {e.Message}");
+                Console.ResetColor();
+            }
         });
 
         return rootCommand.Parse(args).Invoke();

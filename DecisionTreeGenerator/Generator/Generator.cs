@@ -12,10 +12,10 @@ public static class TreeGenerator
     )
     {
         if (!elementSchema.ValidateList(dataPool.TrainingData))
-            throw new Exception("Error in training data");
+            throw new Exception("Training data is invalid.");
 
         if (!elementSchema.ValidateList(dataPool.TestData))
-            throw new Exception("Error in test data");
+            throw new Exception("Test data is invalid.");
 
         Node rootNode = BuildTree(elementSchema, dataPool.TrainingData, elementSchema.Attributes);
 
@@ -29,7 +29,7 @@ public static class TreeGenerator
     )
     {
         if (elements.Count == 0)
-            throw new Exception("Empty subset");
+            throw new Exception("Empty subset.");
 
         string[] labels = elements
             .Select(e => e.Label)
@@ -170,18 +170,18 @@ public static class TreeGenerator
 
             if (attribute is null)
                 throw new Exception(
-                    $"Missing attribute: {decision.Attribute.Name}");
+                    $"Missing attribute: {decision.Attribute.Name}.");
 
             Outcome? outcome = decision.PossibleOutcomes
                 .FirstOrDefault(o => o.Name == attribute.Outcome.Name);
 
             if (outcome is null)
                 throw new Exception(
-                    $"Unknown outcome: {attribute.Outcome.Name}");
+                    $"Unknown outcome: {attribute.Outcome.Name}.");
 
             if (!decision.FollowingNodes.TryGetValue(outcome, out Node? nextNode))
                 throw new Exception(
-                    $"No child node for outcome: {outcome.Name}");
+                    $"No child node for outcome: {outcome.Name}.");
 
             currentNode = nextNode;
         }
@@ -189,6 +189,6 @@ public static class TreeGenerator
         if (currentNode is LeafNode leaf)
             return leaf.Outcome;
 
-        throw new Exception("Invalid tree node");
+        throw new Exception("Invalid tree node.");
     }
 }

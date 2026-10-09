@@ -38,7 +38,7 @@ public class Tree(Node rootNode)
         }
 
         if (node is not Decision decision)
-            throw new Exception("Unknown node type");
+            throw new Exception("Unknown node type.");
 
         Console.WriteLine($"{indent}{decision.Attribute.Name}");
 
