@@ -191,4 +191,13 @@ public static class TreeGenerator
 
         throw new Exception("Invalid tree node.");
     }
+
+    public static void Predict(Tree tree, DataPool dataPool)
+    {
+        foreach (Element el in dataPool.TrainingData)
+        {
+            Outcome outcome = Predict(tree, el);
+            Console.WriteLine($"Prediction: {outcome.Name}");
+        }
+    }
 }

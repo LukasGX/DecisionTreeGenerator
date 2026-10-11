@@ -158,16 +158,16 @@ public class GeneratorTests
         Tree tree = TreeGenerator.GenerateTree(schema, dataPool);
 
         Assert.Equal("A", TreeGenerator.Predict(tree,
-            new("A", [new("Color", new("Red")), new("Shape", new("Circle"))])).Name);
+            new Element("A", [new("Color", new("Red")), new("Shape", new("Circle"))])).Name);
 
         Assert.Equal("A", TreeGenerator.Predict(tree,
-            new("A", [new("Color", new("Red")), new("Shape", new("Square"))])).Name);
+            new Element("A", [new("Color", new("Red")), new("Shape", new("Square"))])).Name);
 
         Assert.Equal("B", TreeGenerator.Predict(tree,
-            new("B", [new("Color", new("Green")), new("Shape", new("Circle"))])).Name);
+            new Element("B", [new("Color", new("Green")), new("Shape", new("Circle"))])).Name);
 
         Assert.Equal("A", TreeGenerator.Predict(tree,
-            new("A", [new("Color", new("Green")), new("Shape", new("Square"))])).Name);
+            new Element("A", [new("Color", new("Green")), new("Shape", new("Square"))])).Name);
     }
 
     [Fact]
