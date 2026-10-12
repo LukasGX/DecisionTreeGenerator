@@ -41,15 +41,13 @@ public static class Program
 
         Option<string> exportOption = new("-e", "--export")
         {
-            Description = "Export: dot:filename, svg:filename or json:filename",
-            DefaultValueFactory = _ => "dot:tree.dot"
+            Description = "Export: dot:filename, svg:filename or json:filename"
         };
 
         // predict command options
         Option<string> loadOption = new("-l", "--load")
         {
-            Description = "Load tree: json:filename",
-            DefaultValueFactory = _ => "json:tree.json"
+            Description = "Load tree: json:filename"
         };
 
         Option<string> predictDataOption = new("-d", "--data")
@@ -58,13 +56,33 @@ public static class Program
             DefaultValueFactory = _ => "manual"
         };
 
+        Option<bool> verboseOption = new("-v", "--verbose")
+        {
+            Description = "Verbose",
+            DefaultValueFactory = _ => false
+        };
+
+        // validate command options
+        Option<string> restrictedSchemaOption = new("-s", "--schema")
+        {
+            Description = "Schema: csv:filename or json:filename"
+        };
+
+        Option<string> validateDataOption = new("-d", "--data")
+        {
+            Description = "Data to validate: json:filename, csv:filename or manual",
+            DefaultValueFactory = _ => "manual"
+        };
+
         RootCommand rootCommand = new("DecisionTreeGenerator");
 
         Command trainCommand = new("train", "Train a decision tree");
         Command predictCommand = new("predict", "Predict outcomes using a trained tree");
+        Command validateCommand = new("validate", "Validate given data using schema");
 
         rootCommand.Subcommands.Add(trainCommand);
         rootCommand.Subcommands.Add(predictCommand);
+        rootCommand.Subcommands.Add(validateCommand);
 
         trainCommand.Options.Add(schemaOption);
         trainCommand.Options.Add(trainingOption);
@@ -74,6 +92,10 @@ public static class Program
 
         predictCommand.Options.Add(loadOption);
         predictCommand.Options.Add(predictDataOption);
+        predictCommand.Options.Add(verboseOption);
+
+        validateCommand.Options.Add(restrictedSchemaOption);
+        validateCommand.Options.Add(validateDataOption);
 
         trainCommand.SetAction(parseResult =>
         {
@@ -196,6 +218,7 @@ public static class Program
             try {
                 string loadArg = parseResult.GetValue(loadOption) ?? throw new Exception("No tree file specified");
                 string predictDataArg = parseResult.GetValue(predictDataOption) ?? "manual";
+                bool verboseArg = parseResult.GetValue(verboseOption);
 
                 Tree? tree = null;
 
@@ -236,7 +259,71 @@ public static class Program
                     });
                 }
 
-                TreeGenerator.Predict(tree, dataPool);
+                TreeGenerator.Predict(tree, dataPool, verboseArg);
+            }
+            catch (FileNotFoundException e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"File not found: {e.FileName}");
+                Console.ResetColor();
+            }
+            catch (Exception e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"Error: {e.Message}");
+                Console.ResetColor();
+            }
+        });
+
+        validateCommand.SetAction(parseResult =>
+        {
+            try {
+                string restrictedSchemaArg = parseResult.GetValue(restrictedSchemaOption) ?? throw new Exception("No schema specified");
+                string validateDataArg = parseResult.GetValue(validateDataOption) ?? "manual";
+
+                // schema
+                LoadFileArgument(restrictedSchemaArg, "schema", (format, filename) =>
+                {
+                    switch (format)
+                    {
+                        case "csv":
+                            elSchema = ElementSchema.LoadCSV(filename);
+                            break;
+
+                        case "json":
+                            elSchema = ElementSchema.LoadJSON(filename);
+                            break;
+                    }
+                });
+
+                // validate data
+                if (validateDataArg.Equals("manual", StringComparison.OrdinalIgnoreCase))
+                {
+                    dataPool.Manual(elSchema, dataPool, false);
+                }
+                else
+                {
+                    LoadFileArgument(validateDataArg, "validate data", (format, filename) =>
+                    {
+                        switch (format)
+                        {
+                            case "csv":
+                                dataPool.LoadCSV(filename, elSchema);
+                                break;
+
+                            case "json":
+                                dataPool.LoadJSON(filename, elSchema);
+                                break;
+                        }
+                    });
+                }
+                
+                bool isValid = elSchema.ValidateList(dataPool.TrainingData);
+
+                if (isValid)
+                    Console.WriteLine("The data is valid.");
+                else
+                    Console.WriteLine("The data is invalid.");
             }
             catch (FileNotFoundException e)
             {

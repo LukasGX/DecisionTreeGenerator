@@ -159,25 +159,31 @@ public static class TreeGenerator
         return (bestSplit, bestInformationGain, remainingAttributes);
     }
 
-    public static Outcome Predict(Tree tree, Element element)
+    public static Outcome Predict(Tree tree, Element element, bool verbose = false)
     {
         Node currentNode = tree.RootNode;
 
         while (currentNode is Decision decision)
         {
             SetAttribute? attribute = element.Attributes
-                .FirstOrDefault(a => a.Name == decision.Attribute.Name);
-
-            if (attribute is null)
-                throw new Exception(
-                    $"Missing attribute: {decision.Attribute.Name}.");
+                .FirstOrDefault(a => a.Name == decision.Attribute.Name)
+                ?? throw new Exception($"Missing attribute: {decision.Attribute.Name}.");
 
             Outcome? outcome = decision.PossibleOutcomes
-                .FirstOrDefault(o => o.Name == attribute.Outcome.Name);
+                .FirstOrDefault(o => o.Name == attribute.Outcome.Name)
+                ?? throw new Exception($"Unknown outcome: {attribute.Outcome.Name}.");
 
-            if (outcome is null)
-                throw new Exception(
-                    $"Unknown outcome: {attribute.Outcome.Name}.");
+            if (verbose)
+            {
+                Console.Write("Attribute ");
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.Write(attribute.Name);
+                Console.ResetColor();
+                Console.Write(" = ");
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine(outcome.Name);
+                Console.ResetColor();
+            }
 
             if (!decision.FollowingNodes.TryGetValue(outcome, out Node? nextNode))
                 throw new Exception(
@@ -187,17 +193,31 @@ public static class TreeGenerator
         }
 
         if (currentNode is LeafNode leaf)
+        {
+            if (verbose)
+            {
+                Console.Write("Reached leaf node: ");
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine(leaf.Outcome.Name);
+                Console.ResetColor();
+            }
             return leaf.Outcome;
+        }
 
         throw new Exception("Invalid tree node.");
     }
 
-    public static void Predict(Tree tree, DataPool dataPool)
+    public static void Predict(Tree tree, DataPool dataPool, bool verbose = false)
     {
-        foreach (Element el in dataPool.TrainingData)
+        for (int i = 0; i < dataPool.TrainingData.Count; i++)
         {
-            Outcome outcome = Predict(tree, el);
-            Console.WriteLine($"Prediction: {outcome.Name}");
+            Element el = dataPool.TrainingData[i];
+            Outcome outcome = Predict(tree, el, verbose);
+
+            Console.WriteLine(
+                $"Prediction: {outcome.Name}" +
+                (verbose && i < dataPool.TrainingData.Count - 1 ? "\n" : "")
+            );
         }
     }
 }
