@@ -29,7 +29,10 @@ public static class TreeGenerator
     )
     {
         if (elements.Count == 0)
+        {
+            Console.WriteLine($"DEBUG: Empty subset. Available attributes: {availableAttributes.Count}");
             throw new Exception("Empty subset.");
+        }
 
         string[] labels = elements
             .Select(e => e.Label)

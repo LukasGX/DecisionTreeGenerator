@@ -17,19 +17,19 @@ public static class Program
         // train command options
         Option<string> schemaOption = new("-s", "--schema")
         {
-            Description = "Schema: csv:filename, json:filename or autodetect",
+            Description = "Schema: csv file, json file or autodetect",
             DefaultValueFactory = _ => "autodetect"
         };
 
         Option<string> trainingOption = new("-l", "--trainingdata")
         {
-            Description = "Trainingdata: csv:filename, json:filename or manual",
+            Description = "Trainingdata: csv file, json file or manual",
             DefaultValueFactory = _ => "manual"
         };
 
         Option<string> testOption = new("-t", "--testdata")
         {
-            Description = "Testdata: csv:filename, json:filename or manual",
+            Description = "Testdata: csv file, json file or manual",
             DefaultValueFactory = _ => "manual"
         };
 
@@ -41,18 +41,18 @@ public static class Program
 
         Option<string> exportOption = new("-e", "--export")
         {
-            Description = "Export: dot:filename, svg:filename or json:filename"
+            Description = "Export: dot file, svg file or json file"
         };
 
         // predict command options
         Option<string> loadOption = new("-l", "--load")
         {
-            Description = "Load tree: json:filename"
+            Description = "Load tree: json file"
         };
 
         Option<string> predictDataOption = new("-d", "--data")
         {
-            Description = "Data to predict: json:filename, csv:filename or manual",
+            Description = "Data to predict: json file, csv file or manual",
             DefaultValueFactory = _ => "manual"
         };
 
@@ -65,12 +65,12 @@ public static class Program
         // validate command options
         Option<string> restrictedSchemaOption = new("-s", "--schema")
         {
-            Description = "Schema: csv:filename or json:filename"
+            Description = "Schema: csv file or json file"
         };
 
         Option<string> validateDataOption = new("-d", "--data")
         {
-            Description = "Data to validate: json:filename, csv:filename or manual",
+            Description = "Data to validate: json file, csv file or manual",
             DefaultValueFactory = _ => "manual"
         };
 
@@ -114,7 +114,7 @@ public static class Program
                 }
                 else
                 {
-                    LoadFileArgument(schemaArg, "schema", (format, filename) =>
+                    LoadFileArgument(schemaArg, "schema", [".csv", ".json"], (format, filename) =>
                     {
                         switch (format)
                         {
@@ -136,7 +136,7 @@ public static class Program
                 }
                 else
                 {
-                    LoadFileArgument(trainingArg, "training data", (format, filename) =>
+                    LoadFileArgument(trainingArg, "training data", [".csv", ".json"], (format, filename) =>
                     {
                         switch (format)
                         {
@@ -158,7 +158,7 @@ public static class Program
                 }
                 else
                 {
-                    LoadFileArgument(testArg, "test data", (format, filename) =>
+                    LoadFileArgument(testArg, "test data", [".csv", ".json"], (format, filename) =>
                     {
                         switch (format)
                         {
@@ -182,7 +182,7 @@ public static class Program
                 // export
                 if (!exportArg.Equals("none", StringComparison.OrdinalIgnoreCase))
                 {
-                    LoadFileArgument(exportArg, "export parameter", (format, filename) =>
+                    LoadFileArgument(exportArg, "export parameter", [".dot", ".svg", ".json"], (format, filename) =>
                     {
                         switch (format)
                         {
@@ -223,7 +223,7 @@ public static class Program
                 Tree? tree = null;
 
                 // load
-                LoadFileArgument(loadArg, "load parameter", (format, filename) =>
+                LoadFileArgument(loadArg, "load parameter", [".json"], (format, filename) =>
                 {
                     switch (format)
                     {
@@ -244,7 +244,7 @@ public static class Program
                 }
                 else
                 {
-                    LoadFileArgument(predictDataArg, "predict data", (format, filename) =>
+                    LoadFileArgument(predictDataArg, "predict data", [".csv", ".json"], (format, filename) =>
                     {
                         switch (format)
                         {
@@ -282,7 +282,7 @@ public static class Program
                 string validateDataArg = parseResult.GetValue(validateDataOption) ?? "manual";
 
                 // schema
-                LoadFileArgument(restrictedSchemaArg, "schema", (format, filename) =>
+                LoadFileArgument(restrictedSchemaArg, "schema", [".csv", ".json"], (format, filename) =>
                 {
                     switch (format)
                     {
@@ -303,7 +303,7 @@ public static class Program
                 }
                 else
                 {
-                    LoadFileArgument(validateDataArg, "validate data", (format, filename) =>
+                    LoadFileArgument(validateDataArg, "validate data", [".csv", ".json"], (format, filename) =>
                     {
                         switch (format)
                         {
@@ -343,25 +343,27 @@ public static class Program
     }
 
     static void LoadFileArgument(
-        string value,
+        string filename,
         string parameterName,
+        string[] allowedFileExtensions,
         Action<string, string> load
     )
     {
-        string[] parts = value.Split(':', 2);
+        string extension = Path.GetExtension(filename);
 
-        if (parts.Length != 2 || string.IsNullOrWhiteSpace(parts[1]))
-            throw new ArgumentException(
-                $"Invalid value for {parameterName}. " +
-                "Expected csv:filename or json:filename.");
+        if (!allowedFileExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+        {
+            throw new FormatException($"File extension '{extension}' is not allowed for {parameterName}.");
+        }
 
-        string format = parts[0].ToLowerInvariant();
-        string filename = parts[1];
+        if (!File.Exists(filename))
+        {
+            throw new FileNotFoundException(
+                $"File '{filename}' does not exist.",
+                filename
+            );
+        }
 
-        if (format is not ("csv" or "json" or "dot" or "svg"))
-            throw new ArgumentException(
-                $"Unsupported format '{format}' for {parameterName}.");
-
-        load(format, filename);
+        load(extension.TrimStart('.'), filename);
     }
 }
