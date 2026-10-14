@@ -18,71 +18,83 @@ public static class Program
         Option<string> schemaOption = new("-s", "--schema")
         {
             Description = "Schema: csv file, json file or autodetect",
-            DefaultValueFactory = _ => "autodetect"
+            DefaultValueFactory = _ => "autodetect",
+            Required = false
         };
 
         Option<string> trainingOption = new("-l", "--trainingdata")
         {
             Description = "Trainingdata: csv file, json file or manual",
-            DefaultValueFactory = _ => "manual"
+            DefaultValueFactory = _ => "manual",
+            Required = false
         };
 
         Option<string> testOption = new("-t", "--testdata")
         {
             Description = "Testdata: csv file, json file or manual",
-            DefaultValueFactory = _ => "manual"
+            DefaultValueFactory = _ => "manual",
+            Required = false
         };
 
         Option<bool> printOption = new("-p", "--print")
         {
             Description = "Print tree to console",
-            DefaultValueFactory = _ => false
+            DefaultValueFactory = _ => false,
+            Required = false
         };
 
         Option<bool> confusionMatrixOption = new("--confusion-matrix")
         {
             Description = "Show confusion matrix",
-            DefaultValueFactory = _ => false
+            DefaultValueFactory = _ => false,
+            Required = false
         };
 
         Option<string> exportConfusionMatrixOption = new("--export-confusion-matrix")
         {
-            Description = "Export confusion matrix: md file"
+            Description = "Export confusion matrix: md file",
+            Required = false
         };
 
         Option<string> exportOption = new("-e", "--export")
         {
-            Description = "Export: dot file, svg file or json file"
+            Description = "Export: dot file, svg file or json file",
+            Required = false
         };
 
         // predict command options
         Option<string> loadOption = new("-l", "--load")
         {
-            Description = "Load tree: json file"
+            Description = "Load tree: json file",
+            Required = true
         };
 
         Option<string> predictDataOption = new("-d", "--data")
         {
             Description = "Data to predict: json file, csv file or manual",
-            DefaultValueFactory = _ => "manual"
+            DefaultValueFactory = _ => "manual",
+            Required = false
         };
 
         Option<bool> verboseOption = new("-v", "--verbose")
         {
             Description = "Verbose",
-            DefaultValueFactory = _ => false
+            DefaultValueFactory = _ => false,
+            Required = false
         };
 
         // validate command options
         Option<string> restrictedSchemaOption = new("-s", "--schema")
         {
-            Description = "Schema: csv file or json file"
+            Description = "Schema: csv file or json file",
+            Required = true
         };
 
         Option<string> validateDataOption = new("-d", "--data")
         {
             Description = "Data to validate: json file, csv file or manual",
-            DefaultValueFactory = _ => "manual"
+            DefaultValueFactory = _ => "manual",
+            Required = false
         };
 
         RootCommand rootCommand = new("DecisionTreeGenerator");
@@ -284,7 +296,7 @@ public static class Program
                     });
                 }
 
-                TreeGenerator.Predict(tree, dataPool, verboseArg, confusionMatrixArg, file);
+                TreeGenerator.Predict(tree, dataPool, verboseArg, file is not null || confusionMatrixArg, file);
             }
             catch (FileNotFoundException e)
             {
