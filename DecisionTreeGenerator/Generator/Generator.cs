@@ -210,17 +210,65 @@ public static class TreeGenerator
         throw new Exception("Invalid tree node.");
     }
 
-    public static void Predict(Tree tree, DataPool dataPool, bool verbose = false)
+    public static void Predict(
+        Tree tree,
+        DataPool dataPool,
+        bool verbose = false,
+        bool showConfusionMatrix = false,
+        string? exportConfusionMatrixFile = null
+    )
     {
-        for (int i = 0; i < dataPool.TrainingData.Count; i++)
+        List<Element> elements = dataPool.TrainingData;
+
+        List<Outcome> labels = elements
+            .Select(e => e.Label)
+            .Distinct()
+            .OrderBy(label => label)
+            .Select(label => new Outcome(label))
+            .ToList();
+
+        Dictionary<string, int> labelIndices = labels
+            .Select((label, index) => (label.Name, index))
+            .ToDictionary(x => x.Name, x => x.index);
+
+        ConfusionMatrix confusionMatrix = new(labels, labels.Count);
+
+        for (int i = 0; i < elements.Count; i++)
         {
-            Element el = dataPool.TrainingData[i];
-            Outcome outcome = Predict(tree, el, verbose);
+            Element el = elements[i];
+            Outcome prediction = Predict(tree, el, verbose);
 
             Console.WriteLine(
-                $"Prediction: {outcome.Name}" +
-                (verbose && i < dataPool.TrainingData.Count - 1 ? "\n" : "")
+                $"Prediction: {prediction.Name}" +
+                (verbose && i < elements.Count - 1 ? "\n" : "")
             );
+
+            if (showConfusionMatrix)
+            {
+                if (!labelIndices.TryGetValue(el.Label, out int actualIndex))
+                    throw new InvalidOperationException(
+                        $"Unknown actual label: {el.Label}");
+
+                if (!labelIndices.TryGetValue(
+                    prediction.Name, out int predictedIndex))
+                {
+                    throw new InvalidOperationException(
+                        $"Unknown predicted label: {prediction.Name}");
+                }
+
+                confusionMatrix.matrix[actualIndex, predictedIndex]++;
+            }
+        }
+
+        if (showConfusionMatrix)
+        {
+            Console.WriteLine("\nConfusion Matrix:");
+            confusionMatrix.Print();
+            if (exportConfusionMatrixFile is not null)
+            {
+                confusionMatrix.Export(exportConfusionMatrixFile);
+                Console.WriteLine($"Exported confusion matrix to {exportConfusionMatrixFile}");
+            }
         }
     }
 }

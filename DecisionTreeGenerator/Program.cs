@@ -39,6 +39,17 @@ public static class Program
             DefaultValueFactory = _ => false
         };
 
+        Option<bool> confusionMatrixOption = new("--confusion-matrix")
+        {
+            Description = "Show confusion matrix",
+            DefaultValueFactory = _ => false
+        };
+
+        Option<string> exportConfusionMatrixOption = new("--export-confusion-matrix")
+        {
+            Description = "Export confusion matrix: md file"
+        };
+
         Option<string> exportOption = new("-e", "--export")
         {
             Description = "Export: dot file, svg file or json file"
@@ -93,6 +104,8 @@ public static class Program
         predictCommand.Options.Add(loadOption);
         predictCommand.Options.Add(predictDataOption);
         predictCommand.Options.Add(verboseOption);
+        predictCommand.Options.Add(confusionMatrixOption);
+        predictCommand.Options.Add(exportConfusionMatrixOption);
 
         validateCommand.Options.Add(restrictedSchemaOption);
         validateCommand.Options.Add(validateDataOption);
@@ -114,7 +127,7 @@ public static class Program
                 }
                 else
                 {
-                    LoadFileArgument(schemaArg, "schema", [".csv", ".json"], (format, filename) =>
+                    LoadFileArgument(schemaArg, "schema", [".csv", ".json"], true, (format, filename) =>
                     {
                         switch (format)
                         {
@@ -136,7 +149,7 @@ public static class Program
                 }
                 else
                 {
-                    LoadFileArgument(trainingArg, "training data", [".csv", ".json"], (format, filename) =>
+                    LoadFileArgument(trainingArg, "training data", [".csv", ".json"], true, (format, filename) =>
                     {
                         switch (format)
                         {
@@ -158,7 +171,7 @@ public static class Program
                 }
                 else
                 {
-                    LoadFileArgument(testArg, "test data", [".csv", ".json"], (format, filename) =>
+                    LoadFileArgument(testArg, "test data", [".csv", ".json"], true, (format, filename) =>
                     {
                         switch (format)
                         {
@@ -182,7 +195,7 @@ public static class Program
                 // export
                 if (!exportArg.Equals("none", StringComparison.OrdinalIgnoreCase))
                 {
-                    LoadFileArgument(exportArg, "export parameter", [".dot", ".svg", ".json"], (format, filename) =>
+                    LoadFileArgument(exportArg, "export parameter", [".dot", ".svg", ".json"], false, (format, filename) =>
                     {
                         switch (format)
                         {
@@ -219,11 +232,13 @@ public static class Program
                 string loadArg = parseResult.GetValue(loadOption) ?? throw new Exception("No tree file specified");
                 string predictDataArg = parseResult.GetValue(predictDataOption) ?? "manual";
                 bool verboseArg = parseResult.GetValue(verboseOption);
+                bool confusionMatrixArg = parseResult.GetValue(confusionMatrixOption);
+                string exportConfusionMatrixArg = parseResult.GetValue(exportConfusionMatrixOption) ?? "";
 
                 Tree? tree = null;
 
                 // load
-                LoadFileArgument(loadArg, "load parameter", [".json"], (format, filename) =>
+                LoadFileArgument(loadArg, "load parameter", [".json"], true, (format, filename) =>
                 {
                     switch (format)
                     {
@@ -244,7 +259,7 @@ public static class Program
                 }
                 else
                 {
-                    LoadFileArgument(predictDataArg, "predict data", [".csv", ".json"], (format, filename) =>
+                    LoadFileArgument(predictDataArg, "predict data", [".csv", ".json"], true, (format, filename) =>
                     {
                         switch (format)
                         {
@@ -259,7 +274,17 @@ public static class Program
                     });
                 }
 
-                TreeGenerator.Predict(tree, dataPool, verboseArg);
+                // export confusion matrix
+                string? file = null;
+                if (exportConfusionMatrixArg != "")
+                {
+                    LoadFileArgument(exportConfusionMatrixArg, "confusion matrix export", [".md", ".csv"], false, (format, filename) =>
+                    {
+                        file = filename;
+                    });
+                }
+
+                TreeGenerator.Predict(tree, dataPool, verboseArg, confusionMatrixArg, file);
             }
             catch (FileNotFoundException e)
             {
@@ -282,7 +307,7 @@ public static class Program
                 string validateDataArg = parseResult.GetValue(validateDataOption) ?? "manual";
 
                 // schema
-                LoadFileArgument(restrictedSchemaArg, "schema", [".csv", ".json"], (format, filename) =>
+                LoadFileArgument(restrictedSchemaArg, "schema", [".csv", ".json"], true, (format, filename) =>
                 {
                     switch (format)
                     {
@@ -303,7 +328,7 @@ public static class Program
                 }
                 else
                 {
-                    LoadFileArgument(validateDataArg, "validate data", [".csv", ".json"], (format, filename) =>
+                    LoadFileArgument(validateDataArg, "validate data", [".csv", ".json"], true, (format, filename) =>
                     {
                         switch (format)
                         {
@@ -346,6 +371,7 @@ public static class Program
         string filename,
         string parameterName,
         string[] allowedFileExtensions,
+        bool requireFileExisting,
         Action<string, string> load
     )
     {
@@ -356,7 +382,7 @@ public static class Program
             throw new FormatException($"File extension '{extension}' is not allowed for {parameterName}.");
         }
 
-        if (!File.Exists(filename))
+        if (!File.Exists(filename) && requireFileExisting)
         {
             throw new FileNotFoundException(
                 $"File '{filename}' does not exist.",
