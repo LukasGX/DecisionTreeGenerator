@@ -112,6 +112,7 @@ public static class Program
         trainCommand.Options.Add(testOption);
         trainCommand.Options.Add(printOption);
         trainCommand.Options.Add(exportOption);
+        trainCommand.Options.Add(verboseOption);
 
         predictCommand.Options.Add(loadOption);
         predictCommand.Options.Add(predictDataOption);
@@ -130,6 +131,7 @@ public static class Program
                 string testArg = parseResult.GetValue(testOption) ?? "manual";
                 string exportArg = parseResult.GetValue(exportOption) ?? "none";
                 bool printArg = parseResult.GetValue(printOption);
+                bool verboseArg = parseResult.GetValue(verboseOption);
 
                 // schema
                 if (schemaArg.Equals("autodetect", StringComparison.OrdinalIgnoreCase))
@@ -199,7 +201,7 @@ public static class Program
                 }
 
                 // generate tree
-                Tree tree = TreeGenerator.GenerateTree(elSchema, dataPool);
+                Tree tree = TreeGenerator.GenerateTree(elSchema, dataPool, verboseArg);
                 tree.Test(dataPool);
 
                 if (printArg) tree.Print();

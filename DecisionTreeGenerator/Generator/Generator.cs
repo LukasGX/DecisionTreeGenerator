@@ -8,7 +8,8 @@ public static class TreeGenerator
 {
     public static Tree GenerateTree(
         ElementSchema elementSchema,
-        DataPool dataPool
+        DataPool dataPool,
+        bool verbose = false
     )
     {
         if (!elementSchema.ValidateList(dataPool.TrainingData))
@@ -17,7 +18,7 @@ public static class TreeGenerator
         if (!elementSchema.ValidateList(dataPool.TestData))
             throw new Exception("Test data is invalid.");
 
-        Node rootNode = BuildTree(elementSchema, dataPool.TrainingData, elementSchema.Attributes);
+        Node rootNode = BuildTree(elementSchema, dataPool.TrainingData, elementSchema.Attributes, verbose, true);
 
         return new Tree(rootNode);
     }
@@ -25,15 +26,11 @@ public static class TreeGenerator
     private static Node BuildTree(
         ElementSchema elementSchema,
         List<Element> elements,
-        List<DataAttribute> availableAttributes
+        List<DataAttribute> availableAttributes,
+        bool verbose = false,
+        bool first = false
     )
     {
-        if (elements.Count == 0)
-        {
-            Console.WriteLine($"DEBUG: Empty subset. Available attributes: {availableAttributes.Count}");
-            throw new Exception("Empty subset.");
-        }
-
         string[] labels = elements
             .Select(e => e.Label)
             .Distinct()
@@ -43,7 +40,7 @@ public static class TreeGenerator
             return new LeafNode(new(labels[0]));
 
         (DataAttribute? bestSplit, double informationGain, List<DataAttribute> availableAttributesNew) =
-            GetBestSplit(elements, availableAttributes);
+            GetBestSplit(elements, availableAttributes, verbose, first);
 
         if (bestSplit is null || informationGain <= 0)
         {
@@ -79,7 +76,7 @@ public static class TreeGenerator
             else
             {
                 decision.FollowingNodes[outcome] =
-                    BuildTree(elementSchema, subset, availableAttributesNew);
+                    BuildTree(elementSchema, subset, availableAttributesNew, verbose);
             }
         }
 
@@ -137,15 +134,25 @@ public static class TreeGenerator
         List<DataAttribute>
     ) GetBestSplit(
         List<Element> elements,
-        List<DataAttribute> availableAttributes)
+        List<DataAttribute> availableAttributes,
+        bool verbose = false,
+        bool first = false
+    )
     {
         DataAttribute? bestSplit = null;
         double bestInformationGain = 0;
+
+        if (verbose && !first) Console.Write("\n");
 
         foreach (DataAttribute attribute in availableAttributes)
         {
             double informationGain =
                 CalculateInformationGain(attribute, elements);
+
+            if (verbose)
+            {
+                Console.WriteLine($"Information Gain for {attribute.Name}: {informationGain:F5}");
+            }
 
             if (informationGain > bestInformationGain)
             {
@@ -158,6 +165,9 @@ public static class TreeGenerator
 
         if (bestSplit is not null)
             remainingAttributes.Remove(bestSplit);
+
+        if (verbose)
+            Console.WriteLine($"\nBest split: {bestSplit?.Name}\nInformation Gain: {bestInformationGain:F5}");
 
         return (bestSplit, bestInformationGain, remainingAttributes);
     }
