@@ -179,7 +179,7 @@ public class GeneratorTests
 
         DataPool dataPool = new();
 
-        Assert.Throws<Exception>(() =>
+        Assert.Throws<InvalidOperationException>(() =>
             TreeGenerator.GenerateTree(schema, dataPool));
     }
 }
