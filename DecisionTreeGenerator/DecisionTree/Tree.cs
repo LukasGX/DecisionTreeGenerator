@@ -351,7 +351,11 @@ public class Tree(Node rootNode)
         Console.WriteLine(string.Join('\n', labels.Select(label => $"  - {label}")));
 
         if (RootNode is Decision rn)
-            Console.WriteLine($"\nRoot attribute:\n  {rn.Attribute.Name}");
+            Console.WriteLine($"\nRoot attribute:\n  {rn.Attribute.Name}\n");
+        else if (RootNode is LeafNode ln)
+            Console.WriteLine($"\nRoot attribute:\n  {ln.Outcome.Name}\n");
+        
+        Print();
     }
 
     private static HashSet<string> GetAttributes(Node node)
