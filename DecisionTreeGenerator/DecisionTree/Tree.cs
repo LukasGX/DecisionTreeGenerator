@@ -331,4 +331,102 @@ public class Tree(Node rootNode)
                     $"Unknown node type: {type}");
         }
     }
+
+    public void Inspect()
+    {
+        Console.WriteLine("Decision Tree Model\n───────────────────────\n");
+
+        HashSet<string> attributes = GetAttributes(RootNode);
+        Console.WriteLine($"Attributes: {attributes.Count}");
+
+        (int decisionNodes, int leafNodes) = CountNodes(RootNode);
+        Console.WriteLine($"Decision nodes: {decisionNodes}\nLeaf nodes: {leafNodes}");
+        Console.WriteLine($"Total nodes: {decisionNodes + leafNodes}");
+
+        int maxDepth = GetMaxDepth(RootNode);
+        Console.WriteLine($"Max depth: {maxDepth}");
+
+        HashSet<string> labels = GetOutcomes(RootNode);
+        Console.WriteLine($"\nLabels:");
+        Console.WriteLine(string.Join('\n', labels.Select(label => $"  - {label}")));
+
+        if (RootNode is Decision rn)
+            Console.WriteLine($"\nRoot attribute:\n  {rn.Attribute.Name}");
+    }
+
+    private static HashSet<string> GetAttributes(Node node)
+    {
+        HashSet<string> attributes = [];
+
+        if (node is Decision decision)
+        {
+            attributes.Add(decision.Attribute.Name);
+
+            foreach (Node child in decision.FollowingNodes.Values)
+                attributes.UnionWith(GetAttributes(child));
+        }
+
+        return attributes;
+    }
+
+    private static HashSet<string> GetOutcomes(Node node)
+    {
+        HashSet<string> outcomes = [];
+
+        if (node is LeafNode leaf)
+        {
+            outcomes.Add(leaf.Outcome.Name);
+            return outcomes;
+        }
+
+        if (node is Decision decision)
+        {
+            foreach (Node child in decision.FollowingNodes.Values)
+                outcomes.UnionWith(GetOutcomes(child));
+        }
+
+        return outcomes;
+    }
+
+    private static (int decisionNodes, int leafNodes) CountNodes(Node node)
+    {
+        if (node is LeafNode)
+            return (0, 1);
+
+        if (node is Decision decision)
+        {
+            int decisionNodes = 1;
+            int leafNodes = 0;
+
+            foreach (Node child in decision.FollowingNodes.Values)
+            {
+                var (decisions, leaves) = CountNodes(child);
+
+                decisionNodes += decisions;
+                leafNodes += leaves;
+            }
+
+            return (decisionNodes, leafNodes);
+        }
+
+        return (0, 0);
+    }
+
+    private static int GetMaxDepth(Node node, int depth = 0)
+    {
+        if (node is LeafNode)
+            return depth;
+
+        if (node is Decision decision)
+        {
+            int maxDepth = depth;
+
+            foreach (Node child in decision.FollowingNodes.Values)
+                maxDepth = Math.Max(maxDepth, GetMaxDepth(child, depth + 1));
+
+            return maxDepth;
+        }
+
+        return depth;
+    }
 }
