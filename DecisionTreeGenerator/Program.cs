@@ -233,14 +233,16 @@ public static class Program
             catch (FileNotFoundException e)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"File not found: {e.FileName}");
+                Console.Error.WriteLine($"File not found: {e.FileName}");
                 Console.ResetColor();
+                Environment.Exit(1);
             }
             catch (Exception e)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error: {e.Message}");
+                Console.Error.WriteLine($"Error: {e.Message}");
                 Console.ResetColor();
+                Environment.Exit(1);
             }
         });
 
@@ -307,14 +309,16 @@ public static class Program
             catch (FileNotFoundException e)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"File not found: {e.FileName}");
+                Console.Error.WriteLine($"File not found: {e.FileName}");
                 Console.ResetColor();
+                Environment.Exit(1);
             }
             catch (Exception e)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error: {e.Message}");
+                Console.Error.WriteLine($"Error: {e.Message}");
                 Console.ResetColor();
+                Environment.Exit(1);
             }
         });
 
@@ -371,14 +375,16 @@ public static class Program
             catch (FileNotFoundException e)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"File not found: {e.FileName}");
+                Console.Error.WriteLine($"File not found: {e.FileName}");
                 Console.ResetColor();
+                Environment.Exit(1);
             }
             catch (Exception e)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error: {e.Message}");
+                Console.Error.WriteLine($"Error: {e.Message}");
                 Console.ResetColor();
+                Environment.Exit(1);
             }
         });
 
@@ -409,14 +415,16 @@ public static class Program
             catch (FileNotFoundException e)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"File not found: {e.FileName}");
+                Console.Error.WriteLine($"File not found: {e.FileName}");
                 Console.ResetColor();
+                Environment.Exit(1);
             }
             catch (Exception e)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error: {e.Message}");
+                Console.Error.WriteLine($"Error: {e.Message}");
                 Console.ResetColor();
+                Environment.Exit(1);
             }
         });
 
