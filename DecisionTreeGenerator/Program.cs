@@ -97,17 +97,29 @@ public static class Program
             Required = false
         };
 
-        RootCommand rootCommand = new("DecisionTreeGenerator");
+        // report command options
+        Option<string> outputOption = new("-o", "--output")
+        {
+            Description = "Output to file",
+            Required = true
+        };
+
+        RootCommand rootCommand = new("dtg")
+        {
+            Description = "DecisionTreeGenerator"
+        };
 
         Command trainCommand = new("train", "Train a decision tree");
         Command predictCommand = new("predict", "Predict outcomes using a trained tree");
         Command validateCommand = new("validate", "Validate given data using schema");
         Command inspectCommand = new("inspect", "Inspect given tree");
+        Command reportCommand = new("report", "Generate html report using a trained tree");
 
         rootCommand.Subcommands.Add(trainCommand);
         rootCommand.Subcommands.Add(predictCommand);
         rootCommand.Subcommands.Add(validateCommand);
         rootCommand.Subcommands.Add(inspectCommand);
+        rootCommand.Subcommands.Add(reportCommand);
 
         trainCommand.Options.Add(schemaOption);
         trainCommand.Options.Add(trainingOption);
@@ -126,6 +138,9 @@ public static class Program
         validateCommand.Options.Add(validateDataOption);
 
         inspectCommand.Options.Add(loadOption);
+
+        reportCommand.Options.Add(loadOption);
+        reportCommand.Options.Add(outputOption);
 
         trainCommand.SetAction(parseResult =>
         {
@@ -411,6 +426,57 @@ public static class Program
                 if (tree is null) throw new Exception("Internal error.");
 
                 tree.Inspect();
+            }
+            catch (FileNotFoundException e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.Error.WriteLine($"File not found: {e.FileName}");
+                Console.ResetColor();
+                Environment.Exit(1);
+            }
+            catch (Exception e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.Error.WriteLine($"Error: {e.Message}");
+                Console.ResetColor();
+                Environment.Exit(1);
+            }
+        });
+
+        reportCommand.SetAction(parseResult =>
+        {
+            try {
+                string loadArg = parseResult.GetValue(loadOption) ?? throw new Exception("No tree file specified");
+                string outputArg = parseResult.GetValue(outputOption) ?? throw new Exception("No output file specified");
+
+                Tree? tree = null;
+
+                // load
+                LoadFileArgument(loadArg, "load parameter", [".json"], true, (format, filename) =>
+                {
+                    switch (format)
+                    {
+                        case "json":
+                            (Tree tr, ElementSchema els) = Tree.LoadFromJSON(filename);
+                            tree = tr;
+                            elSchema = els;
+                            break;
+                    }
+                });
+
+                if (tree is null) throw new Exception("Internal error.");
+
+                // output
+                LoadFileArgument(outputArg, "output parameter", [".html"], false, (format, filename) =>
+                {
+                    switch (format)
+                    {
+                        case "html":
+                            string html = tree.GenerateHtmlReport();
+                            File.WriteAllText(filename, html);
+                            break;
+                    }
+                });
             }
             catch (FileNotFoundException e)
             {
