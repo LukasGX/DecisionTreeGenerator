@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using DecisionTreeGenerator.Data;
 using DecisionTreeGenerator.Nodes;
 using DecisionTreeGenerator.TreeNS;
@@ -143,6 +144,9 @@ public static class TreeGenerator
         double bestInformationGain = 0;
 
         if (verbose && !first) Console.Write("\n");
+
+        if (verbose)
+            Console.WriteLine($"Entropy: {CalculateEntropy(elements):F5}");
 
         foreach (DataAttribute attribute in availableAttributes)
         {

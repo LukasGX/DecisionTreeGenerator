@@ -40,6 +40,24 @@ public class ConfusionMatrix(List<Outcome> outcomes, int classCount)
 
             Console.WriteLine();
         }
+
+        Console.Write("\n");
+        Console.WriteLine($"{"Metric",-12}" +
+        string.Join("", Outcomes.Select(o => $"{o.Name,10}")));
+
+        Console.WriteLine(new string('-', 12 + Outcomes.Count * 10));
+
+        Console.WriteLine($"{"Precision",-12}" +
+        string.Join("", Outcomes.Select((_, i) => $"{Precision(i),10:P2}")));
+
+        Console.WriteLine($"{"Recall",-12}" +
+        string.Join("", Outcomes.Select((_, i) => $"{Recall(i),10:P2}")));
+
+        Console.WriteLine($"{"F1-Score",-12}" +
+        string.Join("", Outcomes.Select((_, i) => $"{F1Score(i),10:P2}")));
+
+        Console.WriteLine();
+        Console.WriteLine($"Accuracy: {Accuracy():P2}");
     }
 
     public void Export(string filename)
@@ -125,5 +143,60 @@ public class ConfusionMatrix(List<Outcome> outcomes, int classCount)
         }
 
         return value;
+    }
+
+    public double Accuracy()
+    {
+        int correct = 0;
+        int total = 0;
+
+        for (int row = 0; row < Outcomes.Count; row++)
+        {
+            for (int col = 0; col < Outcomes.Count; col++)
+            {
+                total += matrix[row, col];
+
+                if (row == col)
+                    correct += matrix[row, col];
+            }
+        }
+
+        return total == 0 ? 0 : (double)correct / total;
+    }
+
+    public double Precision(int classIndex)
+    {
+        int truePositive = matrix[classIndex, classIndex];
+        int predictedPositive = 0;
+
+        for (int row = 0; row < Outcomes.Count; row++)
+            predictedPositive += matrix[row, classIndex];
+
+        return predictedPositive == 0
+            ? 0
+            : (double)truePositive / predictedPositive;
+    }
+
+    public double Recall(int classIndex)
+    {
+        int truePositive = matrix[classIndex, classIndex];
+        int actualPositive = 0;
+
+        for (int col = 0; col < Outcomes.Count; col++)
+            actualPositive += matrix[classIndex, col];
+
+        return actualPositive == 0
+            ? 0
+            : (double)truePositive / actualPositive;
+    }
+
+    public double F1Score(int classIndex)
+    {
+        double precision = Precision(classIndex);
+        double recall = Recall(classIndex);
+
+        return precision + recall == 0
+            ? 0
+            : 2 * precision * recall / (precision + recall);
     }
 }
