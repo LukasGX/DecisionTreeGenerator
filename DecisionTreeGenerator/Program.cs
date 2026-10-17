@@ -4,6 +4,8 @@ using System.CommandLine;
 using DecisionTreeGenerator.Data;
 using DecisionTreeGenerator.Nodes;
 using DecisionTreeGenerator.TreeNS;
+using System.Diagnostics;
+using System.ComponentModel;
 
 namespace DecisionTreeGenerator;
 
@@ -104,6 +106,19 @@ public static class Program
             Required = true
         };
 
+        Option<bool> dontOpenOption = new("-X")
+        {
+            Description = "Do not auto-open report",
+            Required = false
+        };
+
+        Option<string> baseCommandOption = new("-b", "--base-command")
+        {
+            Description = "Base command for opening report",
+            DefaultValueFactory = _ => "xdg-open",
+            Required = false
+        };
+
         RootCommand rootCommand = new("dtg")
         {
             Description = "DecisionTreeGenerator"
@@ -141,6 +156,8 @@ public static class Program
 
         reportCommand.Options.Add(loadOption);
         reportCommand.Options.Add(outputOption);
+        reportCommand.Options.Add(dontOpenOption);
+        reportCommand.Options.Add(baseCommandOption);
 
         trainCommand.SetAction(parseResult =>
         {
@@ -448,6 +465,8 @@ public static class Program
             try {
                 string loadArg = parseResult.GetValue(loadOption) ?? throw new Exception("No tree file specified");
                 string outputArg = parseResult.GetValue(outputOption) ?? throw new Exception("No output file specified");
+                bool dontOpenArg = parseResult.GetValue(dontOpenOption);
+                string baseCommandArg = parseResult.GetValue(baseCommandOption) ?? "xdg-open";
 
                 Tree? tree = null;
 
@@ -466,15 +485,77 @@ public static class Program
 
                 if (tree is null) throw new Exception("Internal error.");
 
+                string[] TrustedBaseCommands =
+                [
+                    "xdg-open",
+                    "firefox",
+                    "chrome",
+                    "chromium",
+                    "brave",
+                    "nautilus",
+                    "dolphin",
+                    "thunar",
+                    "nemo"
+                ];
+
                 // output
                 LoadFileArgument(outputArg, "output parameter", [".html"], false, (format, filename) =>
                 {
                     switch (format)
                     {
                         case "html":
+                        {
                             string html = tree.GenerateHtmlReport();
                             File.WriteAllText(filename, html);
+
+                            if (!dontOpenArg) {
+                                bool confirmed = false;
+                                bool trustedCommand = false;
+
+                                if (!TrustedBaseCommands.Contains(baseCommandArg))
+                                {
+                                    Console.Write($"Do you really want to execute:\n\n{baseCommandArg} {filename}\n\n[y/N] ");
+                                    string? answer = Console.ReadLine();
+                                    if (answer is null)
+                                        confirmed = false;
+                                    else if (answer.Equals("y", StringComparison.CurrentCultureIgnoreCase) || answer.Equals("yes", StringComparison.CurrentCultureIgnoreCase))
+                                        confirmed = true;
+                                    else
+                                        confirmed = false;
+                                }
+                                else
+                                {
+                                    confirmed = true;
+                                }
+
+                                if (confirmed) {
+                                    ProcessStartInfo startInfo = new()
+                                    {
+                                        FileName = baseCommandArg,
+                                        ArgumentList = { filename },
+                                        UseShellExecute = false
+                                    };
+
+                                    try
+                                    {
+                                        Process.Start(startInfo);
+                                    }
+                                    catch (Win32Exception ex) when (ex.NativeErrorCode == 2)
+                                    {
+                                        throw new InvalidOperationException(
+                                            $"{baseCommandArg} {filename} could not be executed.",
+                                            ex);
+                                    }
+
+                                    Console.WriteLine($"Executed \"{baseCommandArg} {filename}\"");
+                                    if (trustedCommand) Console.WriteLine("Because \"{baseCommandArg}\" is trusted.");
+                                    else Console.WriteLine("Because command was confirmed");
+                                }
+                                else
+                                    Console.WriteLine($"Did not execute \"{baseCommandArg} {filename}\"\nBecause command was not confirmed");
+                            }
                             break;
+                        }
                     }
                 });
             }
