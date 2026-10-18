@@ -526,6 +526,7 @@ public static class Program
                                 else
                                 {
                                     confirmed = true;
+                                    trustedCommand = true;
                                 }
 
                                 if (confirmed) {
@@ -548,12 +549,13 @@ public static class Program
                                     }
 
                                     Console.WriteLine($"Executed \"{baseCommandArg} {filename}\"");
-                                    if (trustedCommand) Console.WriteLine("Because \"{baseCommandArg}\" is trusted.");
+                                    if (trustedCommand) Console.WriteLine($"Because \"{baseCommandArg}\" is trusted.");
                                     else Console.WriteLine("Because command was confirmed");
                                 }
                                 else
                                     Console.WriteLine($"Did not execute \"{baseCommandArg} {filename}\"\nBecause command was not confirmed");
                             }
+                            else Console.WriteLine($"Did not execute \"{baseCommandArg} {filename}\"\nBecause it was disabled");
                             break;
                         }
                     }
