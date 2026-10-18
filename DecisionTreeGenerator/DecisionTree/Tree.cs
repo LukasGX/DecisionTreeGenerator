@@ -436,15 +436,6 @@ public class Tree(Node rootNode)
 
     public string GenerateHtmlReport()
     {
-        StringBuilder html = new();
-
-        HashSet<string> attributes = GetAttributes(RootNode);
-        HashSet<string> outcomes = GetOutcomes(RootNode);
-
-        (int decisionNodes, int leafNodes) = CountNodes(RootNode);
-        int totalNodes = decisionNodes + leafNodes;
-        int maxDepth = GetMaxDepth(RootNode);
-
         // Generate SVG through Graphviz
         StringBuilder dot = GenerateDot();
 
@@ -478,6 +469,13 @@ public class Tree(Node rootNode)
         process.StandardInput.Write(dot.ToString());
         process.StandardInput.Close();
 
+        HashSet<string> attributes = GetAttributes(RootNode);
+        HashSet<string> outcomes = GetOutcomes(RootNode);
+
+        (int decisionNodes, int leafNodes) = CountNodes(RootNode);
+        int totalNodes = decisionNodes + leafNodes;
+        int maxDepth = GetMaxDepth(RootNode);
+
         string svg = process.StandardOutput.ReadToEnd();
 
         process.WaitForExit();
@@ -486,308 +484,33 @@ public class Tree(Node rootNode)
             throw new InvalidOperationException(
                 $"Graphviz dot exited with code {process.ExitCode}.");
 
-        html.AppendLine("""
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Decision Tree Report</title>
+        string htmlTemplate = File.ReadAllText(
+            Path.Combine(AppContext.BaseDirectory, "DecisionTree/report-template.html")
+        );
 
-        <style>
-            * {
-                box-sizing: border-box;
-            }
-
-            body {
-                margin: 0;
-                font-family: Inter, system-ui, -apple-system,
-                            BlinkMacSystemFont, "Segoe UI", sans-serif;
-                background: #f1f5f9;
-                color: #0f172a;
-            }
-
-            .container {
-                max-width: 1400px;
-                margin: 0 auto;
-                padding: 40px 24px;
-            }
-
-            header {
-                margin-bottom: 32px;
-            }
-
-            header h1 {
-                margin: 0;
-                font-size: 36px;
-                font-weight: 750;
-            }
-
-            header p {
-                margin-top: 8px;
-                color: #64748b;
-            }
-
-            .stats {
-                display: grid;
-                grid-template-columns:
-                    repeat(auto-fit, minmax(180px, 1fr));
-                gap: 16px;
-                margin-bottom: 32px;
-            }
-
-            .stat {
-                background: white;
-                border-radius: 16px;
-                padding: 22px;
-                border: 1px solid #e2e8f0;
-                box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
-            }
-
-            .stat-label {
-                color: #64748b;
-                font-size: 13px;
-                font-weight: 600;
-                text-transform: uppercase;
-            }
-
-            .stat-value {
-                margin-top: 8px;
-                font-size: 30px;
-                font-weight: 750;
-            }
-
-            .section {
-                background: white;
-                border-radius: 20px;
-                padding: 28px;
-                margin-bottom: 24px;
-                border: 1px solid #e2e8f0;
-                box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
-            }
-
-            .section h2 {
-                margin: 0 0 20px;
-                font-size: 21px;
-            }
-
-            .tree-container {
-                overflow: auto;
-                padding: 10px;
-                text-align: center;
-            }
-
-            .tree-container svg {
-                max-width: 100%;
-                height: auto;
-            }
-
-            .node {
-                display: inline-block;
-                position: relative;
-                z-index: 2;
-                padding: 13px 18px;
-                border-radius: 12px;
-                font-weight: 650;
-                box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
-            }
-
-            .decision {
-                background: #dbeafe;
-                color: #1e40af;
-                border: 2px solid #93c5fd;
-            }
-
-            .labels {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 10px;
-            }
-
-            .label {
-                padding: 7px 12px;
-                border-radius: 999px;
-                background: #eff6ff;
-                color: #1d4ed8;
-                font-size: 14px;
-                font-weight: 600;
-            }
-
-            .footer {
-                text-align: center;
-                color: #94a3b8;
-                font-size: 13px;
-                padding-top: 10px;
-            }
-        </style>
-    </head>
-
-    <body>
-    <div class="container">
-
-    <header>
-        <h1>Decision Tree Report</h1>
-        <p>Generated by DecisionTreeGenerator</p>
-    </header>
-
-    <div class="stats">
-    """);
-
-        AppendStat(html, "Attributes", attributes.Count);
-        AppendStat(html, "Decision Nodes", decisionNodes);
-        AppendStat(html, "Leaf Nodes", leafNodes);
-        AppendStat(html, "Total Nodes", totalNodes);
-        AppendStat(html, "Max Depth", maxDepth);
-
-        html.AppendLine("""
-    </div>
-
-    <div class="section">
-        <h2>Decision Tree</h2>
-        <div class="tree-container">
-    """);
-
-        html.AppendLine(svg);
-
-        html.AppendLine("""
-        </div>
-    </div>
-    """);
-
-        if (RootNode is Decision decisionRoot)
+        // root node
+        string rootNodeAttribute = RootNode switch
         {
-            html.AppendLine("""
-    <div class="section">
-        <h2>Root Attribute</h2>
-    """);
+            Decision decisionRoot => decisionRoot.Attribute.Name,
+            LeafNode leaf => leaf.Outcome.Name,
+            _ => ""
+        };
 
-            html.AppendLine(
-            $"        <div class=\"node decision\">" +
-            $"{System.Net.WebUtility.HtmlEncode(decisionRoot.Attribute.Name)}?" +
-            "</div>");
+        // labels
+        string labels = string.Join('\n', [.. outcomes
+            .OrderBy(x => x)
+            .Select(outcome => $"<span class=\"label\">{outcome}</span>")]);
 
-            html.AppendLine("""
-    </div>
-    """);
-        }
-
-        html.AppendLine("""
-    <div class="section">
-        <h2>Labels</h2>
-        <div class="labels">
-    """);
-
-        foreach (string outcome in outcomes.OrderBy(x => x))
-        {
-            html.AppendLine(
-                $"<span class=\"label\">{System.Net.WebUtility.HtmlEncode(
-                    outcome)}</span>");
-        }
-
-        html.AppendLine("""
-        </div>
-    </div>
-
-    <div class="footer">
-        DecisionTreeGenerator
-    </div>
-
-    </div>
-    </body>
-    </html>
-    """);
+        string html = htmlTemplate
+            .Replace("{{ATTRIBUTES}}", attributes.Count.ToString())
+            .Replace("{{DECISION_NODES}}", decisionNodes.ToString())
+            .Replace("{{LEAF_NODES}}", leafNodes.ToString())
+            .Replace("{{TOTAL_NODES}}", totalNodes.ToString())
+            .Replace("{{MAX_DEPTH}}", maxDepth.ToString())
+            .Replace("{{SVG}}", svg)
+            .Replace("{{ROOT_NODE_ATTRIBUTE}}", rootNodeAttribute)
+            .Replace("{{LABELS}}", labels);
 
         return html.ToString();
-    }
-
-    private static void AppendStat(
-        StringBuilder html,
-        string label,
-        int value
-    )
-    {
-        html.AppendLine($"""
-            <div class="stat">
-                <div class="stat-label">{label}</div>
-                <div class="stat-value">{value}</div>
-            </div>
-        """);
-    }
-
-    private static void AppendHtmlTree(
-        StringBuilder html,
-        Node node
-    )
-    {
-        if (node is LeafNode leaf)
-        {
-            html.AppendLine("""
-                    <li>
-                        <div class="node leaf">
-                            [
-                    """
-                + System.Net.WebUtility.HtmlEncode(leaf.Outcome.Name)
-                + """
-                            ]
-                        </div>
-                    </li>
-                """);
-
-            return;
-        }
-
-        if (node is not Decision decision)
-            throw new InvalidOperationException(
-                $"Unknown node type: {node.GetType().Name}");
-
-        html.AppendLine("""
-                    <li>
-                        <div class="node decision">
-    """
-            + System.Net.WebUtility.HtmlEncode(decision.Attribute.Name)
-            + """
-    ?
-                        </div>
-    """);
-
-        if (decision.FollowingNodes.Count > 0)
-        {
-            html.AppendLine("""
-                        <ul>
-    """);
-
-            foreach (Outcome outcome in decision.PossibleOutcomes)
-            {
-                if (!decision.FollowingNodes.TryGetValue(
-                        outcome,
-                        out Node? child))
-                {
-                    continue;
-                }
-
-                html.AppendLine("""
-                            <li>
-                                <span class="branch">
-    """
-                    + System.Net.WebUtility.HtmlEncode(outcome.Name)
-                    + """
-                                </span>
-    """);
-
-                AppendHtmlTree(html, child);
-
-                html.AppendLine("""
-                            </li>
-    """);
-            }
-
-            html.AppendLine("""
-                        </ul>
-    """);
-        }
-
-        html.AppendLine("""
-                    </li>
-    """);
     }
 }

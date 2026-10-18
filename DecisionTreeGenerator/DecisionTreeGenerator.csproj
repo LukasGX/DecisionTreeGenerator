@@ -14,6 +14,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="DecisionTree/report-template.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Remove="DecisionTreeGenerator.Tests/**/*.cs" />
     <Content Remove="DecisionTreeGenerator.Tests/**" />
     <EmbeddedResource Remove="DecisionTreeGenerator.Tests/**" />

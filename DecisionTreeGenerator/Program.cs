@@ -534,7 +534,10 @@ public static class Program
                                     {
                                         FileName = baseCommandArg,
                                         ArgumentList = { filename },
-                                        UseShellExecute = false
+                                        UseShellExecute = false,
+                                        RedirectStandardOutput = true,
+                                        RedirectStandardError = true,
+                                        CreateNoWindow = true
                                     };
 
                                     try
