@@ -190,6 +190,7 @@ public class Tree(Node rootNode)
             schema = schema.Attributes.Select(attribute => new
             {
                 name = attribute.Name,
+                numeric = attribute.Numeric,
                 outcomes = attribute.Outcomes
                     .Select(outcome => outcome.Name)
                     .ToList()
@@ -224,6 +225,8 @@ public class Tree(Node rootNode)
             {
                 type = "decision",
                 attribute = decision.Attribute.Name,
+                numeric = decision.Numeric,
+                threshold = decision.Numeric ? decision.Treshold : (double?)null,
                 branches = decision.PossibleOutcomes
                     .Where(outcome =>
                         decision.FollowingNodes.ContainsKey(outcome))
@@ -262,7 +265,9 @@ public class Tree(Node rootNode)
                     o.GetString() ?? throw new FormatException("Invalid outcome.")))
                 .ToList();
 
-            attributes.Add(new DataAttribute(name, outcomes));
+            bool numeric = attribute.GetProperty("numeric").GetBoolean();
+
+            attributes.Add(new DataAttribute(name, outcomes, numeric));
         }
 
         ElementSchema schema = new(attributes);
@@ -316,9 +321,19 @@ public class Tree(Node rootNode)
 
                 if (attributeName is null) throw new Exception("Internal Error.");
 
+                bool numeric = element.GetProperty("numeric").GetBoolean();
+
+                double threshold = numeric
+                    ? element.GetProperty("threshold").GetDouble()
+                    : 0.0;
+
                 Decision decision = new(
-                    new DataAttribute(attributeName, outcomes),
-                    outcomes);
+                    new DataAttribute(attributeName, outcomes, numeric),
+                    numeric)
+                {
+                    PossibleOutcomes = outcomes,
+                    Treshold = threshold
+                };
 
                 foreach (var child in children)
                     decision.FollowingNodes.Add(child.Key, child.Value);

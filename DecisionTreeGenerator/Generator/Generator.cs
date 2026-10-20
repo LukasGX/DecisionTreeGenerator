@@ -40,7 +40,11 @@ public static class TreeGenerator
         if (labels.Length == 1)
             return new LeafNode(new(labels[0]));
 
-        (DataAttribute? bestSplit, double informationGain, List<DataAttribute> availableAttributesNew) =
+        (DataAttribute? bestSplit,
+        double informationGain,
+        List<DataAttribute> availableAttributesNew,
+        bool bestIsNumeric,
+        double bestTreshold) =
             GetBestSplit(elements, availableAttributes, verbose, first);
 
         if (bestSplit is null || informationGain <= 0)
@@ -54,30 +58,82 @@ public static class TreeGenerator
             return new LeafNode(new(majorityLabel));
         }
 
-        Decision decision = new(bestSplit, bestSplit.Outcomes);
-
-        foreach (Outcome outcome in bestSplit.Outcomes)
+        Decision decision = new(bestSplit, bestIsNumeric)
         {
-            List<Element> subset = [.. elements.Where(e =>
+            PossibleOutcomes = bestSplit.Outcomes,
+            Treshold = bestTreshold
+        };
+
+        if (bestIsNumeric)
+        {
+            List<Element> lowerSubset = [.. elements.Where(e =>
                 e.Attributes.Any(a =>
                     a.Name == bestSplit.Name &&
-                    a.Outcome.Name == outcome.Name))];
+                    double.Parse(a.Outcome.Name) <= bestTreshold))];
 
-            if (subset.Count == 0)
-            {
-                string majorityLabel = elements
-                    .GroupBy(e => e.Label)
-                    .OrderByDescending(g => g.Count())
-                    .First()
-                    .Key;
+            List<Element> upperSubset = [.. elements.Where(e =>
+                e.Attributes.Any(a =>
+                    a.Name == bestSplit.Name &&
+                    double.Parse(a.Outcome.Name) > bestTreshold))];
 
-                decision.FollowingNodes[outcome] =
-                    new LeafNode(new(majorityLabel));
-            }
-            else
+            Outcome lowerOutcome = new($"<= {bestTreshold}");
+            Outcome upperOutcome = new($"> {bestTreshold}");
+
+            decision.PossibleOutcomes =
+            [
+                lowerOutcome,
+                upperOutcome
+            ];
+
+            decision.FollowingNodes[lowerOutcome] =
+                lowerSubset.Count == 0
+                    ? new LeafNode(new(elements
+                        .GroupBy(e => e.Label)
+                        .OrderByDescending(g => g.Count())
+                        .First().Key))
+                    : BuildTree(
+                        elementSchema,
+                        lowerSubset,
+                        availableAttributesNew,
+                        verbose);
+
+            decision.FollowingNodes[upperOutcome] =
+                upperSubset.Count == 0
+                    ? new LeafNode(new(elements
+                        .GroupBy(e => e.Label)
+                        .OrderByDescending(g => g.Count())
+                        .First().Key))
+                    : BuildTree(
+                        elementSchema,
+                        upperSubset,
+                        availableAttributesNew,
+                        verbose);
+        }
+        else
+        {
+            foreach (Outcome outcome in bestSplit.Outcomes)
             {
-                decision.FollowingNodes[outcome] =
-                    BuildTree(elementSchema, subset, availableAttributesNew, verbose);
+                List<Element> subset = [.. elements.Where(e =>
+                    e.Attributes.Any(a =>
+                        a.Name == bestSplit.Name &&
+                        a.Outcome.Name == outcome.Name))];
+
+                if (subset.Count == 0)
+                {
+                    string majorityLabel = elements
+                        .GroupBy(e => e.Label)
+                        .OrderByDescending(g => g.Count())
+                        .First()
+                        .Key;
+
+                    decision.FollowingNodes[outcome] =
+                        new LeafNode(new(majorityLabel));
+                }
+                else
+                {
+                    decision.FollowingNodes[outcome] =
+                        BuildTree(elementSchema, subset, availableAttributesNew, verbose);
+                }
             }
         }
 
@@ -85,33 +141,91 @@ public static class TreeGenerator
     }
 
     
-    public static double CalculateInformationGain(
+    public static (double, double) CalculateInformationGain(
         DataAttribute attribute,
-        List<Element> elements)
+        List<Element> elements
+    )
     {
         if (elements.Count == 0)
-            return 0.0;
+            return (0.0, double.MaxValue);
 
         double entropyBefore = CalculateEntropy(elements);
         double entropyAfter = 0.0;
 
-        foreach (Outcome outcome in attribute.Outcomes)
+        bool isNumeric = attribute.Outcomes.All(x => double.TryParse(x.Name, out _));
+
+        double bestThreshold = 0;
+        double bestInformationGain = double.MinValue;
+
+        if (isNumeric)
         {
-            List<Element> subset = elements
-                .Where(e => e.Attributes.Any(a =>
-                    a.Name == attribute.Name &&
-                    a.Outcome.Name == outcome.Name))
-                .ToList();
+            List<double> values = [.. attribute.Outcomes
+                .Select(x => double.Parse(x.Name))
+                .Distinct()
+                .OrderBy(x => x)];
 
-            if (subset.Count == 0)
-                continue;
+            List<double> thresholds = [.. values
+                .Zip(
+                    values.Skip(1),
+                    (a, b) => (a + b) / 2
+                )];
 
-            double weight = (double)subset.Count / elements.Count;
+            foreach (double threshold in thresholds)
+            {
+                List<Element> lowerSubset = elements
+                    .Where(e => e.Attributes.Any(a =>
+                        a.Name == attribute.Name &&
+                        double.Parse(a.Outcome.Name) <= threshold))
+                    .ToList();
 
-            entropyAfter += weight * CalculateEntropy(subset);
+                List<Element> upperSubset = elements
+                    .Where(e => e.Attributes.Any(a =>
+                        a.Name == attribute.Name &&
+                        double.Parse(a.Outcome.Name) > threshold))
+                    .ToList();
+
+                if (lowerSubset.Count == 0 || upperSubset.Count == 0)
+                    continue;
+
+                double lowerWeight = (double)lowerSubset.Count / elements.Count;
+                double upperWeight = (double)upperSubset.Count / elements.Count;
+
+                entropyAfter =
+                    lowerWeight * CalculateEntropy(lowerSubset) +
+                    upperWeight * CalculateEntropy(upperSubset);
+
+                double informationGain = entropyBefore - entropyAfter;
+
+                if (informationGain > bestInformationGain)
+                {
+                    bestInformationGain = informationGain;
+                    bestThreshold = threshold;
+                }
+            }
+        }
+        else
+        {
+            foreach (Outcome outcome in attribute.Outcomes)
+            {
+                List<Element> subset = elements
+                    .Where(e => e.Attributes.Any(a =>
+                        a.Name == attribute.Name &&
+                        a.Outcome.Name == outcome.Name))
+                    .ToList();
+
+                if (subset.Count == 0)
+                    continue;
+
+                double weight = (double)subset.Count / elements.Count;
+
+                entropyAfter += weight * CalculateEntropy(subset);
+            }
         }
 
-        return entropyBefore - entropyAfter;
+        return (
+            isNumeric ? bestInformationGain : entropyBefore - entropyAfter,
+            isNumeric ? bestThreshold : double.MaxValue
+        );
     }
 
     private static double CalculateEntropy(List<Element> elements)
@@ -132,7 +246,9 @@ public static class TreeGenerator
     private static (
         DataAttribute?,
         double,
-        List<DataAttribute>
+        List<DataAttribute>,
+        bool,
+        double
     ) GetBestSplit(
         List<Element> elements,
         List<DataAttribute> availableAttributes,
@@ -142,6 +258,8 @@ public static class TreeGenerator
     {
         DataAttribute? bestSplit = null;
         double bestInformationGain = 0;
+        bool bestIsNumeric = false;
+        double bestTresholdR = 0.0;
 
         if (verbose && !first) Console.Write("\n");
 
@@ -150,18 +268,20 @@ public static class TreeGenerator
 
         foreach (DataAttribute attribute in availableAttributes)
         {
-            double informationGain =
+            (double informationGain, double bestTreshold) =
                 CalculateInformationGain(attribute, elements);
 
             if (verbose)
             {
-                Console.WriteLine($"Information Gain for {attribute.Name}: {informationGain:F5}");
+                Console.WriteLine($"Information Gain for {attribute.Name}{(bestTreshold < double.MaxValue ? $" (Threshold: {bestTreshold})" : "")}: {informationGain:F5}");
             }
 
             if (informationGain > bestInformationGain)
             {
                 bestSplit = attribute;
                 bestInformationGain = informationGain;
+                bestIsNumeric = bestTreshold < double.MaxValue;
+                bestTresholdR = bestTreshold;
             }
         }
 
@@ -173,7 +293,7 @@ public static class TreeGenerator
         if (verbose)
             Console.WriteLine($"\nBest split: {bestSplit?.Name}\nInformation Gain: {bestInformationGain:F5}");
 
-        return (bestSplit, bestInformationGain, remainingAttributes);
+        return (bestSplit, bestInformationGain, remainingAttributes, bestIsNumeric, bestTresholdR);
     }
 
     public static Outcome Predict(Tree tree, Element element, bool verbose = false)
@@ -186,9 +306,33 @@ public static class TreeGenerator
                 .FirstOrDefault(a => a.Name == decision.Attribute.Name)
                 ?? throw new Exception($"Missing attribute: {decision.Attribute.Name}.");
 
-            Outcome? outcome = decision.PossibleOutcomes
-                .FirstOrDefault(o => o.Name == attribute.Outcome.Name)
-                ?? throw new Exception($"Unknown outcome: {attribute.Outcome.Name}.");
+            Outcome outcome;
+
+            if (decision.Numeric)
+            {
+                double value = double.Parse(attribute.Outcome.Name);
+
+                outcome = value <= decision.Treshold
+                    ? decision.PossibleOutcomes[0]
+                    : decision.PossibleOutcomes[1];
+            }
+            else
+            {
+                outcome = decision.PossibleOutcomes
+                    .FirstOrDefault(o => o.Name == attribute.Outcome.Name)
+                    ?? throw new Exception(
+                        $"Unknown outcome: {attribute.Outcome.Name}.");
+            }
+
+            Node? nextNode = decision.FollowingNodes
+                .FirstOrDefault(x => x.Key.Name == outcome.Name)
+                .Value;
+
+            if (nextNode is null)
+                throw new Exception(
+                    $"No child node for outcome: {outcome.Name}.");
+
+            currentNode = nextNode;
 
             if (verbose)
             {
@@ -201,12 +345,6 @@ public static class TreeGenerator
                 Console.WriteLine(outcome.Name);
                 Console.ResetColor();
             }
-
-            if (!decision.FollowingNodes.TryGetValue(outcome, out Node? nextNode))
-                throw new Exception(
-                    $"No child node for outcome: {outcome.Name}.");
-
-            currentNode = nextNode;
         }
 
         if (currentNode is LeafNode leaf)

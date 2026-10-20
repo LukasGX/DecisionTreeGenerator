@@ -104,16 +104,43 @@ public class DataPool
                         attributeName,
                         StringComparison.OrdinalIgnoreCase));
 
-                Outcome? outcome = attribute.Outcomes.FirstOrDefault(o =>
-                    o.Name.Equals(
-                        value,
-                        StringComparison.OrdinalIgnoreCase));
+                Outcome? outcome;
 
-                if (outcome is null)
+                if (attribute.Numeric)
                 {
-                    throw new FormatException(
-                        $"Unknown outcome '{value}' for attribute " +
-                        $"'{attributeName}' in CSV line {line}.");
+                    if (!double.TryParse(value, out double numericValue))
+                    {
+                        throw new FormatException(
+                            $"Invalid numeric value '{value}' for attribute " +
+                            $"'{attributeName}' in CSV line {line}.");
+                    }
+
+                    string normalizedValue = numericValue.ToString(
+                        CultureInfo.InvariantCulture);
+
+                    outcome = attribute.Outcomes.FirstOrDefault(o =>
+                        double.TryParse(o.Name, out double outcomeValue) &&
+                        outcomeValue == numericValue);
+
+                    if (outcome is null)
+                    {
+                        outcome = new Outcome(normalizedValue);
+                        attribute.Outcomes.Add(outcome);
+                    }
+                }
+                else
+                {
+                    outcome = attribute.Outcomes.FirstOrDefault(o =>
+                        o.Name.Equals(
+                            value,
+                            StringComparison.OrdinalIgnoreCase));
+
+                    if (outcome is null)
+                    {
+                        throw new FormatException(
+                            $"Unknown outcome '{value}' for attribute " +
+                            $"'{attributeName}' in CSV line {line}.");
+                    }
                 }
 
                 element.Attributes.Add(new(attribute.Name, outcome));
@@ -205,15 +232,42 @@ public class DataPool
 
                 string value = valueElement.GetString()?.Trim() ?? "";
 
-                Outcome? outcome = attribute.Outcomes.FirstOrDefault(o =>
-                    o.Name.Equals(
-                        value,
-                        StringComparison.OrdinalIgnoreCase));
+                Outcome? outcome;
 
-                if (outcome is null)
-                    throw new FormatException(
-                        $"Unknown outcome '{value}' for attribute " +
-                        $"'{attribute.Name}' at index {index}.");
+                if (attribute.Numeric)
+                {
+                    if (!double.TryParse(value, out double numericValue))
+                    {
+                        throw new FormatException(
+                            $"Invalid numeric value '{value}' for attribute " +
+                            $"'{attribute.Name}' at index {index}.");
+                    }
+
+                    string normalizedValue = numericValue.ToString(
+                        CultureInfo.InvariantCulture);
+
+                    outcome = attribute.Outcomes.FirstOrDefault(o =>
+                        double.TryParse(o.Name, out double outcomeValue) &&
+                        outcomeValue == numericValue);
+
+                    if (outcome is null)
+                    {
+                        outcome = new Outcome(normalizedValue);
+                        attribute.Outcomes.Add(outcome);
+                    }
+                }
+                else
+                {
+                    outcome = attribute.Outcomes.FirstOrDefault(o =>
+                        o.Name.Equals(
+                            value,
+                            StringComparison.OrdinalIgnoreCase));
+
+                    if (outcome is null)
+                        throw new FormatException(
+                            $"Unknown outcome '{value}' for attribute " +
+                            $"'{attribute.Name}' at index {index}.");
+                }
 
                 element.Attributes.Add(new(attribute.Name, outcome));
             }
@@ -227,15 +281,21 @@ public class DataPool
             TrainingData.AddRange(elements);
     }
 
-    public void Manual(ElementSchema elementSchema, DataPool dataPool, bool testData = false)
+    public void Manual(
+        ElementSchema elementSchema,
+        DataPool dataPool,
+        bool testData = false)
     {
         Console.WriteLine("Enter \"EXIT\" in any input to exit the process");
+
         while (true)
         {
             Console.Write("Enter Label: ");
-            string? label = Console.ReadLine() ?? throw new Exception("Label cannot be empty.");
+            string? label = Console.ReadLine()
+                ?? throw new Exception("Label cannot be empty.");
 
-            if (label == "EXIT") break;
+            if (label == "EXIT")
+                break;
 
             Element el = new(label, []);
 
@@ -247,14 +307,38 @@ public class DataPool
                     string? input = Console.ReadLine();
 
                     if (input is null)
+                    {
                         Console.WriteLine("Unsupported value");
+                    }
                     else if (input == "EXIT")
+                    {
                         return;
+                    }
+                    else if (attribute.Numeric)
+                    {
+                        if (!double.TryParse(input, out double numericValue))
+                        {
+                            Console.WriteLine("Unsupported value");
+                            continue;
+                        }
+
+                        string normalizedValue =
+                            numericValue.ToString(CultureInfo.InvariantCulture);
+
+                        el.Attributes.Add(
+                            new(attribute.Name, new(normalizedValue)));
+
+                        break;
+                    }
                     else if (!attribute.Outcomes.Any(o => o.Name == input))
+                    {
                         Console.WriteLine("Unsupported value");
+                    }
                     else
                     {
-                        el.Attributes.Add(new(attribute.Name, new(input)));
+                        el.Attributes.Add(
+                            new(attribute.Name, new(input)));
+
                         break;
                     }
                 }

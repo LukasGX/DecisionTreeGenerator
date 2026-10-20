@@ -19,6 +19,9 @@ public class ElementSchema(List<DataAttribute> attributes)
             if (matching == null)
                 return false;
 
+            if (attr.Numeric && double.TryParse(matching.Outcome.Name, out _))
+                return true;
+
             if (!attr.Outcomes.Any(o => o.Name == matching.Outcome.Name))
                 return false;
         }
@@ -94,8 +97,13 @@ public class ElementSchema(List<DataAttribute> attributes)
             if (outcomes.Count == 0)
                 throw new FormatException(
                     $"Attribute '{attributeName}' has no outcomes in line {line}.");
+            else if (outcomes.Count == 1 && outcomes[0].Name == "#NUMERIC")
+            {
+                attributes.Add(new DataAttribute(attributeName, [], true));
+                continue;
+            }
 
-            attributes.Add(new DataAttribute(attributeName, outcomes));
+            attributes.Add(new DataAttribute(attributeName, outcomes, false));
         }
 
         if (attributes.Count == 0)
@@ -172,8 +180,13 @@ public class ElementSchema(List<DataAttribute> attributes)
             if (outcomes.Count == 0)
                 throw new FormatException(
                     $"Attribute '{name}' must have at least one outcome.");
+            else if (outcomes.Count == 1 && outcomes[0].Name == "#NUMERIC")
+            {
+                attributes.Add(new DataAttribute(name, [], true));
+                continue;
+            }
 
-            attributes.Add(new DataAttribute(name, outcomes));
+            attributes.Add(new DataAttribute(name, outcomes, false));
         }
 
         if (attributes.Count == 0)
