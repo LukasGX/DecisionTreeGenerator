@@ -9,7 +9,7 @@ public class GeneratorTests
     public void CalculateInformationGain_PerfectSplit_ReturnsOne()
     {
         ElementSchema schema = new([
-            new("Color", [new("Red"), new("Green")])
+            new("Color", [new("Red"), new("Green")], false)
         ]);
 
         List<Element> elements =
@@ -20,7 +20,7 @@ public class GeneratorTests
             new("B", [new("Color", new("Green"))])
         ];
 
-        double gain = TreeGenerator.CalculateInformationGain(
+        (double gain, _) = TreeGenerator.CalculateInformationGain(
             schema.Attributes[0], elements);
 
         Assert.Equal(1.0, gain, precision: 10);
@@ -30,7 +30,7 @@ public class GeneratorTests
     public void CalculateInformationGain_NoUsefulSplit_ReturnsZero()
     {
         ElementSchema schema = new([
-            new("Color", [new("Red"), new("Green")])
+            new("Color", [new("Red"), new("Green")], false)
         ]);
 
         List<Element> elements =
@@ -41,7 +41,7 @@ public class GeneratorTests
             new("B", [new("Color", new("Green"))])
         ];
 
-        double gain = TreeGenerator.CalculateInformationGain(
+        (double gain, _) = TreeGenerator.CalculateInformationGain(
             schema.Attributes[0], elements);
 
         Assert.Equal(0.0, gain, precision: 10);
@@ -51,10 +51,10 @@ public class GeneratorTests
     public void CalculateInformationGain_EmptyDataset_ReturnsZero()
     {
         ElementSchema schema = new([
-            new("Color", [new("Red"), new("Green")])
+            new("Color", [new("Red"), new("Green")], false)
         ]);
 
-        double gain = TreeGenerator.CalculateInformationGain(
+        (double gain, _) = TreeGenerator.CalculateInformationGain(
             schema.Attributes[0], []);
 
         Assert.Equal(0.0, gain);
@@ -64,7 +64,7 @@ public class GeneratorTests
     public void CalculateInformationGain_PureDataset_ReturnsZero()
     {
         ElementSchema schema = new([
-            new("Color", [new("Red"), new("Green")])
+            new("Color", [new("Red"), new("Green")], false)
         ]);
 
         List<Element> elements =
@@ -74,7 +74,7 @@ public class GeneratorTests
             new("A", [new("Color", new("Red"))])
         ];
 
-        double gain = TreeGenerator.CalculateInformationGain(
+        (double gain, _) = TreeGenerator.CalculateInformationGain(
             schema.Attributes[0], elements);
 
         Assert.Equal(0.0, gain, precision: 10);
@@ -84,7 +84,7 @@ public class GeneratorTests
     public void GenerateTree_PerfectlySeparableData_CreatesCorrectPredictions()
     {
         ElementSchema schema = new([
-            new("Color", [new("Red"), new("Green")])
+            new("Color", [new("Red"), new("Green")], false)
         ]);
 
         DataPool dataPool = new();
@@ -114,7 +114,7 @@ public class GeneratorTests
     public void GenerateTree_NoUsefulSplit_ReturnsMajorityLabel()
     {
         ElementSchema schema = new([
-            new("Color", [new("Red"), new("Green")])
+            new("Color", [new("Red"), new("Green")], false)
         ]);
 
         DataPool dataPool = new();
@@ -141,8 +141,8 @@ public class GeneratorTests
     public void GenerateTree_TwoRelevantAttributes_PredictsCorrectly()
     {
         ElementSchema schema = new([
-            new("Color", [new("Red"), new("Green")]),
-            new("Shape", [new("Circle"), new("Square")])
+            new("Color", [new("Red"), new("Green")], false),
+            new("Shape", [new("Circle"), new("Square")], false)
         ]);
 
         DataPool dataPool = new();
@@ -174,7 +174,7 @@ public class GeneratorTests
     public void GenerateTree_EmptyTrainingData_ThrowsException()
     {
         ElementSchema schema = new([
-            new("Color", [new("Red"), new("Green")])
+            new("Color", [new("Red"), new("Green")], false)
         ]);
 
         DataPool dataPool = new();
